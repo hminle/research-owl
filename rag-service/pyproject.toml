@@ -1,0 +1,21 @@
+[project]
+name = "research-owl"
+version = "0.1.0"
+description = "Local RAG service for arxiv papers"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi",
+    "uvicorn[standard]",
+    "docling",
+    "docling-core",
+    "qdrant-client",
+    "sentence-transformers",
+    "pydantic-settings",
+]
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
