@@ -4,12 +4,17 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    qdrant_url: str = "http://localhost:6333"
-    collection_name: str = "papers"
-    embed_model: str = "all-MiniLM-L6-v2"
-    embed_dimension: int = 384
     data_dir: Path = Path("data")
     images_scale: float = 2.0
+
+    ai_gateway_api_key: str = ""
+    ai_gateway_base_url: str = "https://ai-gateway.vercel.sh/v1"
+    llm_model: str = "openai/gpt-4o-mini"
+    vision_model: str = "openai/gpt-4o"
+    embed_model: str = "openai/text-embedding-3-small"
+    embed_dimension: int = 1536
+
+    qdrant_url: str = "http://localhost:6333"
 
     @property
     def images_dir(self) -> Path:
@@ -18,6 +23,10 @@ class Settings(BaseSettings):
     @property
     def db_path(self) -> Path:
         return self.data_dir / "papers.db"
+
+    @property
+    def lightrag_dir(self) -> Path:
+        return self.data_dir / "lightrag"
 
     model_config = {"env_prefix": "OWL_"}
 

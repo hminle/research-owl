@@ -12,6 +12,7 @@ class PaperStatus(str, Enum):
 
 # --- Ingest ---
 
+
 class IngestRequest(BaseModel):
     arxiv_url: str
 
@@ -22,6 +23,7 @@ class IngestResponse(BaseModel):
 
 
 # --- Paper metadata ---
+
 
 class PaperMetadata(BaseModel):
     paper_id: str
@@ -35,29 +37,44 @@ class PaperMetadata(BaseModel):
     updated_at: str | None = None
 
 
-# --- Search ---
+# --- LightRAG Query ---
 
-class SearchRequest(BaseModel):
+
+class QueryRequest(BaseModel):
     query: str
-    top_k: int = 5
-    paper_id: str | None = None
+    mode: str = "mix"
 
 
-class SearchResult(BaseModel):
-    paper_id: str
-    text: str
-    score: float
-    chunk_type: str = "text"  # "text", "figure", "table"
-    page_number: int | None = None
-    headings: list[str] = []
-    image_url: str | None = None
+class QueryResponse(BaseModel):
+    response: str
+    mode: str
 
 
-class SearchResponse(BaseModel):
-    results: list[SearchResult]
+# --- Graph Export ---
+
+
+class GraphNode(BaseModel):
+    id: str
+    label: str
+    entity_type: str | None = None
+    description: str | None = None
+
+
+class GraphEdge(BaseModel):
+    source: str
+    target: str
+    description: str | None = None
+    keywords: str | None = None
+    weight: float = 1.0
+
+
+class GraphData(BaseModel):
+    nodes: list[GraphNode]
+    edges: list[GraphEdge]
 
 
 # --- Images ---
+
 
 class ImageInfo(BaseModel):
     filename: str

@@ -1,16 +1,18 @@
 [project]
 name = "research-owl"
-version = "0.1.0"
-description = "Local RAG service for arxiv papers"
+version = "0.3.0"
+description = "RAG-Anything powered research assistant for arxiv papers"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi",
     "uvicorn[standard]",
+    "raganything",
     "docling",
     "docling-core",
+    "lightrag-hku",
     "qdrant-client",
-    "sentence-transformers",
     "pydantic-settings",
+    "python-dotenv",
 ]
 
 [build-system]

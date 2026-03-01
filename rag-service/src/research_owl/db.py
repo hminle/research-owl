@@ -111,7 +111,7 @@ def get_images(paper_id: str) -> list[ImageInfo]:
     return [
         ImageInfo(
             filename=r["filename"],
-            url=f"/static/images/{paper_id}/{r['filename']}",
+            url=f"/static/parsed/{paper_id}/{r['filename']}",
             page_number=r["page_number"],
             caption=r["caption"],
         )
