@@ -3,7 +3,7 @@
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import Image from "next/image";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Conversation,
   ConversationContent,
@@ -75,7 +75,7 @@ export default function ChatPage() {
   const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL);
 
   // Keep transport body in sync
-  const _syncModel = useMemo(() => {
+  useEffect(() => {
     _transportBody.modelId = selectedModel;
   }, [selectedModel]);
 

@@ -20,7 +20,7 @@ const NAV_ITEMS = [
   { label: "Chat", href: "/", icon: MessageSquare },
   { label: "Ingest Paper", href: "/ingest", icon: FileUp },
   { label: "Papers", href: "/papers", icon: Library },
-  { label: "Knowledge Graph", href: "/graph", icon: GitFork, disabled: true },
+  { label: "Knowledge Graph", href: "/graph", icon: GitFork },
 ];
 
 export function AppSidebar() {
@@ -55,14 +55,9 @@ export function AppSidebar() {
                     <SidebarMenuButton
                       asChild
                       isActive={isActive}
-                      disabled={item.disabled}
                       tooltip={item.label}
                     >
-                      <Link
-                        href={item.disabled ? "#" : item.href}
-                        aria-disabled={item.disabled}
-                        className={item.disabled ? "pointer-events-none opacity-50" : ""}
-                      >
+                      <Link href={item.href}>
                         <item.icon className="h-4 w-4" />
                         <span>{item.label}</span>
                       </Link>
