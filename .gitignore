@@ -15,6 +15,7 @@ downloads/
 eggs/
 .eggs/
 lib/
+!webapp/src/lib/
 lib64/
 parts/
 sdist/
@@ -208,3 +209,4 @@ __marimo__/
 
 # Research Owl runtime data
 rag-service/data/
+reference_code/

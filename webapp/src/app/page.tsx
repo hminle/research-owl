@@ -2,6 +2,7 @@
 
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import Image from "next/image";
 import { useMemo, useState } from "react";
 import {
   Conversation,
@@ -33,7 +34,7 @@ import {
   ReasoningTrigger,
 } from "@/components/ai-elements/reasoning";
 import { Spinner } from "@/components/ui/spinner";
-import { Sparkles, BookOpen } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 const SUGGESTIONS = [
   {
@@ -127,45 +128,11 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex flex-col h-screen">
-      <div className="border-b bg-white px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <BookOpen className="h-6 w-6 text-amber-600" />
-            <div>
-              <h1 className="text-xl font-semibold">Research Owl</h1>
-              <p className="text-sm text-gray-500">
-                AI-powered research assistant
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4 text-xs text-gray-500">
-            <div className="flex items-center gap-1.5" title="Session token usage">
-              <svg
-                className="h-3.5 w-3.5"
-                fill="none"
-                viewBox="0 0 24 24"
-                strokeWidth={1.5}
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M3.75 3v11.25A2.25 2.25 0 0 0 6 16.5h2.25M3.75 3h-1.5m1.5 0h16.5m0 0h1.5m-1.5 0v11.25A2.25 2.25 0 0 1 18 16.5h-2.25m-7.5 0h7.5m-7.5 0-1 3m8.5-3 1 3m0 0 .5 1.5m-.5-1.5h-9.5m0 0-.5 1.5"
-                />
-              </svg>
-              <span>{formatTokenCount(sessionTokenUsage.totalTokens)} tokens</span>
-              {sessionTokenUsage.totalTokens > 0 && (
-                <span className="text-gray-400">
-                  ({formatTokenCount(sessionTokenUsage.inputTokens)} in /{" "}
-                  {formatTokenCount(sessionTokenUsage.outputTokens)} out)
-                </span>
-              )}
-            </div>
-            <div className="h-3 w-px bg-gray-200" />
-            <span>{messageCount} messages</span>
-          </div>
-        </div>
+    <div className="flex flex-col h-full">
+      <div className="flex items-center justify-end gap-4 px-4 py-1.5 text-xs text-muted-foreground">
+        <span>{formatTokenCount(sessionTokenUsage.totalTokens)} tokens</span>
+        <div className="h-3 w-px bg-border" />
+        <span>{messageCount} messages</span>
       </div>
 
       <Conversation className="flex-1">
@@ -173,6 +140,16 @@ export default function ChatPage() {
           {messages.length === 0 ? (
             <ConversationEmptyState>
               <div className="max-w-md space-y-4">
+                <div className="flex justify-center">
+                  <Image
+                    src="/cute-owl-that-read-book.svg"
+                    alt="Research Owl mascot"
+                    width={64}
+                    height={64}
+                    className="h-32 w-32"
+                    priority
+                  />
+                </div>
                 <div className="space-y-1">
                   <h3 className="font-medium text-sm">Welcome to Research Owl</h3>
                   <p className="text-muted-foreground text-sm">
