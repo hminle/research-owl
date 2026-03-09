@@ -1,15 +1,14 @@
 [project]
 name = "research-owl"
 version = "0.3.0"
-description = "RAG-Anything powered research assistant for arxiv papers"
+description = "Qdrant-native RAG research assistant for arxiv papers"
 requires-python = ">=3.10"
 dependencies = [
     "fastapi",
     "uvicorn[standard]",
-    "raganything",
     "docling",
     "docling-core",
-    "lightrag-hku",
+    "openai>=1.0",
     "qdrant-client",
     "pydantic-settings",
     "python-dotenv",

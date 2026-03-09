@@ -1,8 +1,7 @@
-"""Arxiv PDF download and lightweight text extraction.
+"""Arxiv PDF download and text extraction.
 
 Downloads PDFs from arxiv and extracts full text with Docling for
-citation parsing. The heavy multimodal processing (figures, tables,
-equations → KG entities) is handled by RAGAnything separately.
+chunking, embedding, and citation parsing.
 """
 
 from __future__ import annotations
@@ -83,10 +82,9 @@ def process_pdf(
     paper_id: str,
     download_dir: Path,
 ) -> PipelineResult:
-    """Download arxiv PDF and extract text for citation parsing.
+    """Download arxiv PDF and extract text.
 
-    Returns the local PDF path (for RAGAnything) and extracted text
-    (for citation parsing).
+    Returns the local PDF path and extracted text for chunking and citation parsing.
     """
     local_path = download_pdf(arxiv_url, paper_id, download_dir)
     title, full_text = extract_text(local_path)

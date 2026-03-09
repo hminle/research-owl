@@ -47,18 +47,18 @@ const STEPS = [
       "Runs Docling to extract title and full text from the PDF for downstream parsing.",
   },
   {
-    key: "process_multimodal",
-    label: "Multimodal",
+    key: "embed_chunks",
+    label: "Embed",
     icon: Brain,
     helpText:
-      "Uses RAGAnything + LightRAG to parse figures/tables/equations and index multimodal content into the knowledge graph.",
+      "Chunks text, describes images with GPT-4o vision, embeds everything with OpenAI, and stores in Qdrant.",
   },
   {
     key: "parse_citations",
     label: "Citations",
     icon: Quote,
     helpText:
-      "Parses cited arXiv papers from extracted text and adds citation relationships into the graph.",
+      "Parses cited arXiv papers from the extracted text.",
   },
   {
     key: "collect_images",

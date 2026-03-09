@@ -31,9 +31,9 @@ export default function RootLayout({
               <header className="flex h-12 shrink-0 items-center border-b px-4">
                 <SidebarTrigger className="-ml-1" />
               </header>
-              <main className="flex-1 overflow-hidden">
+              <div className="flex-1 min-h-0 overflow-auto">
                 <Providers>{children}</Providers>
-              </main>
+              </div>
             </SidebarInset>
           </SidebarProvider>
         </TooltipProvider>

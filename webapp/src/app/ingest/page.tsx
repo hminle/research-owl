@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { Suspense, useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { FileUp, RotateCcw } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -20,6 +20,14 @@ async function fetchPapers(): Promise<Paper[]> {
 }
 
 export default function IngestPage() {
+  return (
+    <Suspense>
+      <IngestPageContent />
+    </Suspense>
+  );
+}
+
+function IngestPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const paperIdFromQuery = searchParams.get("paperId");
@@ -58,22 +66,24 @@ export default function IngestPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8 space-y-8">
-      <div className="space-y-1">
+    <div className="px-6 py-4 space-y-4">
+      <div className="space-y-0.5">
         <div className="flex items-center gap-2">
           <FileUp className="h-5 w-5 text-amber-600" />
           <h1 className="text-xl font-semibold">Ingest Paper</h1>
         </div>
         <p className="text-sm text-muted-foreground">
           Paste an arxiv URL to download, parse, and index a paper into the
-          knowledge graph.
+          vector store.
         </p>
       </div>
 
-      <IngestForm
-        onIngestStart={handleIngestStart}
-        disabled={pipelineActive}
-      />
+      <div className="max-w-2xl">
+        <IngestForm
+          onIngestStart={handleIngestStart}
+          disabled={pipelineActive}
+        />
+      </div>
 
       {paperId && (
         <div className="space-y-4">

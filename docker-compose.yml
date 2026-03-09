@@ -1,0 +1,59 @@
+services:
+  # ---------------------------------------------------------------------------
+  # Qdrant - Vector database for embeddings
+  # ---------------------------------------------------------------------------
+  qdrant:
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/localhost/6333'"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # ---------------------------------------------------------------------------
+  # RAG Service - FastAPI backend (Qdrant-native RAG)
+  # ---------------------------------------------------------------------------
+  rag-service:
+    build:
+      context: ./rag-service
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./rag-service/data:/app/data
+    environment:
+      - OWL_DATA_DIR=/app/data
+      - OWL_QDRANT_URL=http://qdrant:6333
+      - OWL_AI_GATEWAY_API_KEY=${OWL_AI_GATEWAY_API_KEY}
+      - OWL_AI_GATEWAY_BASE_URL=${OWL_AI_GATEWAY_BASE_URL:-https://ai-gateway.vercel.sh/v1}
+      - OWL_LLM_MODEL=${OWL_LLM_MODEL:-openai/gpt-4o-mini}
+      - OWL_VISION_MODEL=${OWL_VISION_MODEL:-openai/gpt-4o}
+      - OWL_EMBED_MODEL=${OWL_EMBED_MODEL:-openai/text-embedding-3-small}
+      - OWL_EMBED_DIMENSION=${OWL_EMBED_DIMENSION:-1536}
+      - OPENAI_API_KEY=${OWL_AI_GATEWAY_API_KEY}
+    depends_on:
+      qdrant:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # Webapp - Next.js frontend
+  # ---------------------------------------------------------------------------
+  webapp:
+    build:
+      context: ./webapp
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - RAG_API_URL=http://rag-service:8000
+      - AI_GATEWAY_API_KEY=${AI_GATEWAY_API_KEY:-${OWL_AI_GATEWAY_API_KEY}}
+    depends_on:
+      - rag-service
+
+volumes:
+  qdrant_data:

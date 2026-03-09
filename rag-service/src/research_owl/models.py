@@ -15,6 +15,7 @@ class PaperStatus(str, Enum):
 
 class IngestRequest(BaseModel):
     arxiv_url: str
+    skip_embedding: bool = False
 
 
 class IngestResponse(BaseModel):
@@ -37,12 +38,12 @@ class PaperMetadata(BaseModel):
     updated_at: str | None = None
 
 
-# --- LightRAG Query ---
+# --- RAG Query ---
 
 
 class QueryRequest(BaseModel):
     query: str
-    mode: str = "mix"
+    mode: str = "semantic"
 
 
 class QueryResponse(BaseModel):
@@ -50,27 +51,35 @@ class QueryResponse(BaseModel):
     mode: str
 
 
-# --- Graph Export ---
+# --- Chunk Explorer ---
 
 
-class GraphNode(BaseModel):
+class ChunkItem(BaseModel):
     id: str
-    label: str
-    entity_type: str | None = None
-    description: str | None = None
+    paper_id: str
+    paper_title: str = ""
+    chunk_type: str = "text"
+    chunk_index: int = 0
+    content: str = ""
+    image_filename: str | None = None
+    score: float | None = None
 
 
-class GraphEdge(BaseModel):
-    source: str
-    target: str
-    description: str | None = None
-    keywords: str | None = None
-    weight: float = 1.0
+class ChunkListResponse(BaseModel):
+    items: list[ChunkItem]
+    total: int
 
 
-class GraphData(BaseModel):
-    nodes: list[GraphNode]
-    edges: list[GraphEdge]
+class ChunkSearchRequest(BaseModel):
+    query: str
+    top_k: int = 10
+    paper_id: str | None = None
+
+
+class CollectionStats(BaseModel):
+    total_points: int = 0
+    vectors_count: int = 0
+    status: str = "unknown"
 
 
 # --- Images ---
@@ -81,3 +90,110 @@ class ImageInfo(BaseModel):
     url: str
     page_number: int | None = None
     caption: str | None = None
+
+
+# --- Evaluation ---
+
+
+class EvalRunStatus(str, Enum):
+    pending = "pending"
+    running = "running"
+    completed = "completed"
+    failed = "failed"
+
+
+class EvalItemCreate(BaseModel):
+    question: str
+    ground_truth: str
+    metadata: dict | None = None
+
+
+class EvalItem(BaseModel):
+    item_id: int
+    dataset_id: str
+    question: str
+    ground_truth: str
+    metadata: dict | None = None
+    created_at: str | None = None
+
+
+class EvalItemUpdate(BaseModel):
+    question: str | None = None
+    ground_truth: str | None = None
+    metadata: dict | None = None
+
+
+class DatasetCreateRequest(BaseModel):
+    name: str
+    description: str = ""
+    items: list[EvalItemCreate] = []
+
+
+class DatasetGenerateRequest(BaseModel):
+    name: str
+    description: str = ""
+    paper_ids: list[str]
+    num_questions: int = 10
+
+
+class EvalDataset(BaseModel):
+    dataset_id: str
+    name: str
+    description: str = ""
+    paper_ids: list[str] = []
+    num_items: int = 0
+    created_at: str | None = None
+    updated_at: str | None = None
+
+
+class EvalDatasetDetail(EvalDataset):
+    items: list[EvalItem] = []
+
+
+class EvalRunRequest(BaseModel):
+    dataset_id: str
+    query_mode: str = "semantic"
+
+
+class EvalItemResult(BaseModel):
+    item_id: int
+    question: str
+    ground_truth: str
+    answer: str = ""
+    contexts: list[str] = []
+    correctness_score: str | None = None
+    correctness_reason: str | None = None
+    factual_correctness: float | None = None
+
+
+class EvalRun(BaseModel):
+    run_id: str
+    dataset_id: str
+    status: EvalRunStatus = EvalRunStatus.pending
+    query_mode: str = "semantic"
+    correctness: float | None = None
+    factual_correctness: float | None = None
+    num_items: int = 0
+    error_message: str | None = None
+    started_at: str | None = None
+    completed_at: str | None = None
+    created_at: str | None = None
+
+
+class EvalRunDetail(EvalRun):
+    item_results: list[EvalItemResult] = []
+
+
+class EvalTrendPoint(BaseModel):
+    run_id: str
+    dataset_id: str
+    completed_at: str
+    correctness: float | None = None
+    factual_correctness: float | None = None
+
+
+class EvalStats(BaseModel):
+    total_datasets: int = 0
+    total_runs: int = 0
+    total_items: int = 0
+    trends: list[EvalTrendPoint] = []

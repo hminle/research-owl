@@ -23,7 +23,7 @@ class StepStatus(str, Enum):
 PIPELINE_STEPS = [
     "download",
     "extract_text",
-    "process_multimodal",
+    "embed_chunks",
     "parse_citations",
     "collect_images",
 ]

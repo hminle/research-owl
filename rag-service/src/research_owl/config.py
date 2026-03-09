@@ -25,8 +25,8 @@ class Settings(BaseSettings):
         return self.data_dir / "papers.db"
 
     @property
-    def lightrag_dir(self) -> Path:
-        return self.data_dir / "lightrag"
+    def parsed_dir(self) -> Path:
+        return self.data_dir / "parsed"
 
     model_config = {"env_prefix": "OWL_"}
 

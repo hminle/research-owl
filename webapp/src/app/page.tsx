@@ -128,7 +128,7 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-[calc(100vh-3rem)]">
       <div className="flex items-center justify-end gap-4 px-4 py-1.5 text-xs text-muted-foreground">
         <span>{formatTokenCount(sessionTokenUsage.totalTokens)} tokens</span>
         <div className="h-3 w-px bg-border" />

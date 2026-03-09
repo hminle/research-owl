@@ -36,14 +36,14 @@ export default function PapersPage() {
   });
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8 space-y-6">
-      <div className="space-y-1">
+    <div className="px-6 py-4 space-y-4">
+      <div className="space-y-0.5">
         <div className="flex items-center gap-2">
           <Library className="h-5 w-5 text-amber-600" />
           <h1 className="text-xl font-semibold">Papers</h1>
         </div>
         <p className="text-sm text-muted-foreground">
-          All ingested papers in the knowledge graph.
+          All ingested papers in the vector store.
         </p>
       </div>
 
@@ -64,7 +64,7 @@ export default function PapersPage() {
       )}
 
       {papers.length > 0 && (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
           {papers.map((paper) => (
             <Link
               key={paper.paper_id}

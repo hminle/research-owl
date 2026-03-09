@@ -1,9 +1,9 @@
 """Research Owl RAG Service.
 
-FastAPI application that ingests arxiv papers via RAGAnything
-(Docling parser + gpt-4o vision for multimodal KG entities),
-indexes them in LightRAG (knowledge graph + vector search),
-and exposes multi-mode query endpoints.
+FastAPI application that ingests arxiv papers, chunks text,
+embeds with OpenAI text-embedding-3-small, describes figures
+with GPT-4o vision, stores in Qdrant, and exposes semantic
+search query endpoints with LLM-as-judge evaluation.
 """
 
 from __future__ import annotations
@@ -22,17 +22,33 @@ from fastapi.staticfiles import StaticFiles
 
 from research_owl.config import settings
 from research_owl.db import (
+    add_eval_items,
+    create_eval_dataset,
+    create_eval_run,
     create_paper,
+    delete_eval_dataset,
+    delete_eval_item,
+    get_eval_dataset,
+    get_eval_dataset_detail,
+    get_eval_run,
+    get_eval_run_detail,
+    get_eval_stats,
     get_images,
     get_paper,
     init_db,
+    list_eval_datasets,
+    list_eval_items,
+    list_eval_runs,
     list_papers,
     save_images,
+    update_eval_dataset,
+    update_eval_item,
+    update_eval_run,
     update_paper,
 )
 from research_owl.ingestion.citation_parser import parse_citations
 from research_owl.ingestion.pipeline import process_pdf
-from research_owl.lightrag_service import ResearchOwlRAG
+from research_owl.qdrant_service import QdrantRAGService
 from research_owl.progress import (
     StepStatus,
     create_progress,
@@ -41,7 +57,21 @@ from research_owl.progress import (
     wait_for_update,
 )
 from research_owl.models import (
-    GraphData,
+    ChunkListResponse,
+    ChunkSearchRequest,
+    CollectionStats,
+    DatasetCreateRequest,
+    DatasetGenerateRequest,
+    EvalDataset,
+    EvalDatasetDetail,
+    EvalItem,
+    EvalItemCreate,
+    EvalItemUpdate,
+    EvalRun,
+    EvalRunDetail,
+    EvalRunRequest,
+    EvalRunStatus,
+    EvalStats,
     ImageInfo,
     IngestRequest,
     IngestResponse,
@@ -55,7 +85,7 @@ load_dotenv()
 
 logger = logging.getLogger(__name__)
 
-rag_service: ResearchOwlRAG
+rag_service: QdrantRAGService
 
 ARXIV_ID_PATTERN = re.compile(r"(\d{4}\.\d{4,5})")
 
@@ -77,8 +107,7 @@ async def lifespan(app: FastAPI):
 
     init_db(settings.db_path)
 
-    rag_service = ResearchOwlRAG(
-        working_dir=settings.lightrag_dir,
+    rag_service = QdrantRAGService(
         api_key=settings.ai_gateway_api_key,
         base_url=settings.ai_gateway_base_url,
         llm_model=settings.llm_model,
@@ -120,12 +149,16 @@ app.mount(
 # ---------------------------------------------------------------------------
 
 
-async def _async_ingest(paper_id: str, arxiv_url: str) -> None:
-    """Async ingestion that runs on the main event loop.
+async def _async_ingest(paper_id: str, arxiv_url: str, skip_embedding: bool = False) -> None:
+    """Async ingestion pipeline.
 
-    Blocking I/O (PDF download + Docling parsing) is offloaded to a thread
-    so the event loop stays responsive. All LightRAG/RAGAnything calls
-    remain on the main loop to avoid cross-loop resource conflicts.
+    1. Download PDF + extract text with Docling (in thread)
+    2. Chunk text, embed with OpenAI, describe images with GPT-4o, store in Qdrant
+    3. Parse citations from full text
+    4. Collect image metadata
+
+    If skip_embedding is True, skip steps 2-5 and just register the paper
+    metadata (useful when vectors already exist in Qdrant).
     """
     current_step: str | None = None
     create_progress(paper_id)
@@ -149,21 +182,45 @@ async def _async_ingest(paper_id: str, arxiv_url: str) -> None:
         # Step 2: Extract text (mark completed since process_pdf handles both)
         current_step = "extract_text"
         update_step(paper_id, "extract_text", StepStatus.in_progress)
-        # Text extraction happens inside process_pdf, so mark done immediately
         update_step(paper_id, "extract_text", StepStatus.completed)
 
-        # Step 3: Process multimodal (RAGAnything)
-        current_step = "process_multimodal"
-        update_step(paper_id, "process_multimodal", StepStatus.in_progress)
+        if skip_embedding:
+            # Skip embedding/chunking — just count existing vectors in Qdrant
+            num_chunks = await rag_service.count_vectors(paper_id)
+            for step in ("embed_chunks", "parse_citations", "collect_images"):
+                update_step(paper_id, step, StepStatus.completed)
+            current_step = None
+
+            update_paper(
+                paper_id,
+                status=PaperStatus.completed.value,
+                title=pipeline_result.title,
+                num_chunks=num_chunks,
+                num_images=0,
+            )
+            logger.info(
+                "Metadata-only ingestion for paper %s: title=%r, %d existing vectors",
+                paper_id,
+                pipeline_result.title,
+                num_chunks,
+            )
+            return
+
+        # Step 3: Embed chunks into Qdrant (text + images)
+        current_step = "embed_chunks"
+        update_step(paper_id, "embed_chunks", StepStatus.in_progress)
 
         output_dir = settings.data_dir / "parsed" / paper_id
-        await rag_service.process_document(
-            file_path=pipeline_result.local_pdf_path,
-            output_dir=output_dir,
-            doc_id=paper_id,
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        ingest_result = await rag_service.ingest_document(
+            paper_id=paper_id,
+            full_text=pipeline_result.full_text,
+            title=pipeline_result.title,
+            image_dir=output_dir,
         )
 
-        update_step(paper_id, "process_multimodal", StepStatus.completed)
+        update_step(paper_id, "embed_chunks", StepStatus.completed)
 
         # Step 4: Parse citations
         current_step = "parse_citations"
@@ -173,12 +230,6 @@ async def _async_ingest(paper_id: str, arxiv_url: str) -> None:
             pipeline_result.full_text,
             exclude_id=paper_id,
         )
-        if citations:
-            await rag_service.insert_citations(
-                paper_id=paper_id,
-                paper_title=pipeline_result.title or "",
-                citations=citations,
-            )
 
         update_step(paper_id, "parse_citations", StepStatus.completed)
 
@@ -199,12 +250,13 @@ async def _async_ingest(paper_id: str, arxiv_url: str) -> None:
             paper_id,
             status=PaperStatus.completed.value,
             title=pipeline_result.title,
-            num_chunks=0,
+            num_chunks=ingest_result["num_chunks"],
             num_images=num_images,
         )
         logger.info(
-            "Ingestion completed for paper %s: %d images, %d citations",
+            "Ingestion completed for paper %s: %d chunks, %d images, %d citations",
             paper_id,
+            ingest_result["num_chunks"],
             num_images,
             len(citations),
         )
@@ -217,7 +269,7 @@ async def _async_ingest(paper_id: str, arxiv_url: str) -> None:
 
 
 def _count_images(output_dir) -> int:
-    """Count image files in the RAGAnything output directory."""
+    """Count image files in the parsed output directory."""
     from pathlib import Path
 
     output_path = Path(output_dir)
@@ -230,7 +282,7 @@ def _count_images(output_dir) -> int:
 
 
 def _collect_image_records(output_dir, paper_id: str) -> list[dict]:
-    """Collect image metadata from the RAGAnything output directory."""
+    """Collect image metadata from the parsed output directory."""
     from pathlib import Path
 
     output_path = Path(output_dir)
@@ -260,7 +312,7 @@ async def ingest(request: IngestRequest, background_tasks: BackgroundTasks):
     else:
         create_paper(paper_id, request.arxiv_url)
 
-    background_tasks.add_task(_async_ingest, paper_id, request.arxiv_url)
+    background_tasks.add_task(_async_ingest, paper_id, request.arxiv_url, request.skip_embedding)
     return IngestResponse(paper_id=paper_id, status=PaperStatus.pending)
 
 
@@ -346,20 +398,17 @@ async def get_paper_images(paper_id: str):
 
 
 # ---------------------------------------------------------------------------
-# LightRAG Query
+# RAG Query
 # ---------------------------------------------------------------------------
 
 
 @app.post("/query", response_model=QueryResponse)
 async def query(request: QueryRequest):
-    """Query the knowledge graph + vector store via LightRAG.
+    """Query the Qdrant vector store with semantic search.
 
     Modes:
-    - local: entity-focused retrieval
-    - global: relationship-focused retrieval
-    - hybrid: combines local and global
-    - mix: KG + vector retrieval (recommended default)
-    - naive: plain vector search
+    - semantic: cosine similarity search across all papers
+    - paper:<paper_id>: search within a specific paper
     """
     try:
         result = await rag_service.query(request.query, mode=request.mode)
@@ -369,15 +418,314 @@ async def query(request: QueryRequest):
 
 
 # ---------------------------------------------------------------------------
-# Graph export
+# Chunk Explorer
 # ---------------------------------------------------------------------------
 
 
-@app.get("/graph", response_model=GraphData)
-async def get_graph():
-    """Export the full knowledge graph for visualization."""
-    data = rag_service.export_graph()
-    return GraphData(**data)
+@app.get("/chunks", response_model=ChunkListResponse)
+async def list_chunks(
+    paper_id: str | None = None,
+    chunk_type: str | None = None,
+    offset: int = 0,
+    limit: int = 20,
+):
+    """List document chunks stored in Qdrant."""
+    result = await rag_service.list_chunks(
+        paper_id=paper_id,
+        chunk_type=chunk_type,
+        offset=offset,
+        limit=limit,
+    )
+    return result
+
+
+@app.post("/chunks/search")
+async def search_chunks(request: ChunkSearchRequest):
+    """Search chunks by semantic similarity."""
+    results = await rag_service.search_chunks(
+        query=request.query,
+        top_k=request.top_k,
+        paper_id=request.paper_id,
+    )
+    return results
+
+
+@app.get("/chunks/stats", response_model=CollectionStats)
+async def chunk_stats():
+    """Get Qdrant collection statistics."""
+    return await rag_service.get_collection_stats()
+
+
+# ---------------------------------------------------------------------------
+# Evaluation — Datasets
+# ---------------------------------------------------------------------------
+
+# In-memory progress tracking for eval operations
+_eval_progress: dict[str, dict] = {}
+
+
+@app.post("/eval/datasets/generate", response_model=EvalDataset)
+async def generate_dataset(request: DatasetGenerateRequest, background_tasks: BackgroundTasks):
+    """Auto-generate a Q&A evaluation dataset from ingested papers."""
+    # Validate all paper IDs exist and are completed
+    for pid in request.paper_ids:
+        paper = get_paper(pid)
+        if not paper:
+            raise HTTPException(status_code=404, detail=f"Paper {pid} not found")
+        if paper.status != PaperStatus.completed:
+            raise HTTPException(status_code=400, detail=f"Paper {pid} is not completed (status: {paper.status.value})")
+
+    ds = create_eval_dataset(
+        name=request.name,
+        description=request.description,
+        paper_ids=request.paper_ids,
+    )
+
+    _eval_progress[ds.dataset_id] = {"status": "running", "completed": 0, "total": len(request.paper_ids), "error": None}
+
+    background_tasks.add_task(
+        _async_generate_dataset,
+        ds.dataset_id,
+        request.paper_ids,
+        request.num_questions,
+    )
+
+    return ds
+
+
+async def _async_generate_dataset(dataset_id: str, paper_ids: list[str], num_questions: int) -> None:
+    from research_owl.evaluation.dataset_generator import generate_qa_pairs, get_paper_text
+
+    try:
+        questions_per_paper = max(1, num_questions // len(paper_ids))
+        total_generated = 0
+
+        for i, paper_id in enumerate(paper_ids):
+            paper_text = get_paper_text(paper_id)
+            if not paper_text:
+                logger.warning("No text found for paper %s, skipping", paper_id)
+                continue
+
+            pairs = await generate_qa_pairs(
+                paper_id=paper_id,
+                paper_text=paper_text,
+                num_questions=questions_per_paper,
+            )
+
+            if pairs:
+                add_eval_items(dataset_id, pairs)
+                total_generated += len(pairs)
+
+            _eval_progress[dataset_id] = {
+                "status": "running",
+                "completed": i + 1,
+                "total": len(paper_ids),
+                "error": None,
+            }
+
+        update_eval_dataset(dataset_id, num_items=total_generated)
+        _eval_progress[dataset_id] = {"status": "completed", "completed": len(paper_ids), "total": len(paper_ids), "error": None}
+        logger.info("Generated %d Q&A items for dataset %s", total_generated, dataset_id)
+
+    except Exception as e:
+        logger.exception("Dataset generation failed for %s", dataset_id)
+        _eval_progress[dataset_id] = {"status": "failed", "completed": 0, "total": len(paper_ids), "error": str(e)}
+
+
+@app.post("/eval/datasets", response_model=EvalDataset)
+async def create_dataset(request: DatasetCreateRequest):
+    """Create a dataset manually with optional initial items."""
+    ds = create_eval_dataset(name=request.name, description=request.description)
+    if request.items:
+        add_eval_items(ds.dataset_id, [item.model_dump() for item in request.items])
+        ds = get_eval_dataset(ds.dataset_id)  # type: ignore[assignment]
+    return ds
+
+
+@app.get("/eval/datasets", response_model=list[EvalDataset])
+async def get_datasets():
+    return list_eval_datasets()
+
+
+@app.get("/eval/datasets/{dataset_id}", response_model=EvalDatasetDetail)
+async def get_dataset_detail(dataset_id: str):
+    ds = get_eval_dataset_detail(dataset_id)
+    if not ds:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    return ds
+
+
+@app.put("/eval/datasets/{dataset_id}", response_model=EvalDataset)
+async def update_dataset(dataset_id: str, request: DatasetCreateRequest):
+    ds = get_eval_dataset(dataset_id)
+    if not ds:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    updated = update_eval_dataset(dataset_id, name=request.name, description=request.description)
+    return updated
+
+
+@app.delete("/eval/datasets/{dataset_id}")
+async def delete_dataset(dataset_id: str):
+    if not delete_eval_dataset(dataset_id):
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    return {"ok": True}
+
+
+@app.post("/eval/items", response_model=list[EvalItem])
+async def add_items(dataset_id: str, items: list[EvalItemCreate]):
+    ds = get_eval_dataset(dataset_id)
+    if not ds:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    return add_eval_items(dataset_id, [item.model_dump() for item in items])
+
+
+@app.put("/eval/items/{item_id}", response_model=EvalItem)
+async def update_item(item_id: int, request: EvalItemUpdate):
+    kwargs = request.model_dump(exclude_none=True)
+    updated = update_eval_item(item_id, **kwargs)
+    if not updated:
+        raise HTTPException(status_code=404, detail="Item not found")
+    return updated
+
+
+@app.delete("/eval/items/{item_id}")
+async def delete_item(item_id: int):
+    if not delete_eval_item(item_id):
+        raise HTTPException(status_code=404, detail="Item not found")
+    return {"ok": True}
+
+
+# ---------------------------------------------------------------------------
+# Evaluation — Runs
+# ---------------------------------------------------------------------------
+
+
+@app.post("/eval/runs", response_model=EvalRun)
+async def start_eval_run(request: EvalRunRequest, background_tasks: BackgroundTasks):
+    """Start an evaluation run on a dataset."""
+    ds = get_eval_dataset_detail(request.dataset_id)
+    if not ds:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+    if not ds.items:
+        raise HTTPException(status_code=400, detail="Dataset has no items")
+
+    run = create_eval_run(
+        dataset_id=request.dataset_id,
+        query_mode=request.query_mode,
+        num_items=len(ds.items),
+    )
+
+    _eval_progress[run.run_id] = {"status": "running", "completed": 0, "total": len(ds.items), "error": None}
+
+    background_tasks.add_task(
+        _async_run_evaluation,
+        run.run_id,
+        [item.model_dump() for item in ds.items],
+        request.query_mode,
+    )
+
+    return run
+
+
+async def _async_run_evaluation(run_id: str, items: list[dict], query_mode: str) -> None:
+    from research_owl.evaluation.evaluator import run_evaluation
+
+    update_eval_run(
+        run_id,
+        status=EvalRunStatus.running.value,
+        started_at="datetime('now')",
+    )
+    # Fix: use actual SQL datetime
+    from research_owl.db import _get_conn
+    conn = _get_conn()
+    conn.execute("UPDATE eval_runs SET started_at = datetime('now') WHERE run_id = ?", (run_id,))
+    conn.commit()
+
+    async def progress_cb(completed: int, total: int):
+        _eval_progress[run_id] = {"status": "running", "completed": completed, "total": total, "error": None}
+
+    try:
+        result = await run_evaluation(
+            items=items,
+            query_func=rag_service.query,
+            retrieve_func=rag_service.retrieve_contexts,
+            query_mode=query_mode,
+            progress_callback=progress_cb,
+        )
+
+        update_eval_run(
+            run_id,
+            status=EvalRunStatus.completed.value,
+            correctness=result.correctness,
+            factual_correctness=result.factual_correctness,
+            item_results=result.item_results or [],
+        )
+        conn = _get_conn()
+        conn.execute("UPDATE eval_runs SET completed_at = datetime('now') WHERE run_id = ?", (run_id,))
+        conn.commit()
+
+        _eval_progress[run_id] = {"status": "completed", "completed": len(items), "total": len(items), "error": None}
+        logger.info("Evaluation run %s completed", run_id)
+
+    except Exception as e:
+        logger.exception("Evaluation run %s failed", run_id)
+        update_eval_run(run_id, status=EvalRunStatus.failed.value, error_message=str(e))
+        _eval_progress[run_id] = {"status": "failed", "completed": 0, "total": len(items), "error": str(e)}
+
+
+@app.get("/eval/runs", response_model=list[EvalRun])
+async def get_runs(dataset_id: str | None = None):
+    return list_eval_runs(dataset_id)
+
+
+@app.get("/eval/runs/{run_id}", response_model=EvalRunDetail)
+async def get_run_detail(run_id: str):
+    run = get_eval_run_detail(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+    return run
+
+
+@app.get("/eval/runs/{run_id}/progress")
+async def eval_run_progress(run_id: str):
+    """SSE endpoint streaming evaluation run progress."""
+    run = get_eval_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="Run not found")
+
+    async def event_stream():
+        while True:
+            progress = _eval_progress.get(run_id)
+            if progress:
+                yield f"data: {json.dumps(progress)}\n\n"
+                if progress["status"] in ("completed", "failed"):
+                    yield "data: [DONE]\n\n"
+                    return
+            else:
+                # No live progress — check DB status
+                current = get_eval_run(run_id)
+                if current and current.status in (EvalRunStatus.completed, EvalRunStatus.failed):
+                    yield f"data: {json.dumps({'status': current.status.value, 'completed': current.num_items, 'total': current.num_items, 'error': current.error_message})}\n\n"
+                    yield "data: [DONE]\n\n"
+                    return
+                yield f"data: {json.dumps({'status': 'pending', 'completed': 0, 'total': 0, 'error': None})}\n\n"
+
+            await asyncio.sleep(1)
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@app.get("/eval/stats", response_model=EvalStats)
+async def eval_stats(dataset_id: str | None = None):
+    return get_eval_stats(dataset_id)
 
 
 # ---------------------------------------------------------------------------
