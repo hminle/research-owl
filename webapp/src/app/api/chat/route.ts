@@ -1,34 +1,16 @@
-import {
-  convertToModelMessages,
-  createUIMessageStream,
-  createUIMessageStreamResponse,
-  streamText,
-  type UIMessage,
-} from "ai";
-import { getAgentConfig } from "@/lib/ai/agent";
+import { createAgentUIStreamResponse } from "ai";
+import { createResearchOwlAgent } from "@/lib/agents/research-owl";
 
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
-  const {
-    messages,
-    modelId,
-  }: { messages: UIMessage[]; modelId?: string } = await request.json();
+  const { messages, modelId }: { messages: unknown[]; modelId?: string } =
+    await request.json();
 
-  const config = getAgentConfig(modelId);
-  const modelMessages = await convertToModelMessages(messages);
+  const agent = createResearchOwlAgent(modelId);
 
-  const stream = createUIMessageStream({
-    execute: async ({ writer }) => {
-      const result = streamText({
-        ...config,
-        messages: modelMessages,
-      });
-
-      writer.merge(result.toUIMessageStream());
-    },
-    onError: () => "Oops, an error occurred!",
+  return createAgentUIStreamResponse({
+    agent,
+    uiMessages: messages,
   });
-
-  return createUIMessageStreamResponse({ stream });
 }

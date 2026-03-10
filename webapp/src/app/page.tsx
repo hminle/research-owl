@@ -4,6 +4,8 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import { SearchChunksTool } from "@/components/search-chunks-tool";
+import type { ResearchOwlUIMessage } from "@/lib/agents/research-owl";
 import {
   Conversation,
   ConversationContent,
@@ -38,20 +40,20 @@ import { Sparkles } from "lucide-react";
 
 const SUGGESTIONS = [
   {
-    label: "Explain transformers",
-    prompt: "Explain the transformer architecture and self-attention mechanism in simple terms",
+    label: "How does deep WB editing work?",
+    prompt: "How does the Deep White-Balance Editing paper use a multi-decoder architecture to correct and manipulate white balance in sRGB images?",
   },
   {
-    label: "RAG overview",
-    prompt: "What is Retrieval-Augmented Generation (RAG) and how does it improve LLM outputs?",
+    label: "Modular ISP pipeline",
+    prompt: "What are the key modules in the Modular Neural ISP framework, and how does it generalize to unseen cameras?",
   },
   {
-    label: "Research methodology",
-    prompt: "What are the key steps in designing a good research methodology for a CS paper?",
+    label: "CCMNet for color constancy",
+    prompt: "How does CCMNet leverage pre-calibrated CCMs for cross-camera color constancy? What is the imaginary camera augmentation technique?",
   },
   {
-    label: "Literature review tips",
-    prompt: "How do I conduct an effective literature review for my research topic?",
+    label: "Compare the approaches",
+    prompt: "Compare the approaches in Deep WB Editing, Modular Neural ISP, and CCMNet. How do they each handle camera-specific color processing?",
   },
 ];
 
@@ -87,7 +89,7 @@ export default function ChatPage() {
       })
   );
 
-  const { messages, sendMessage, status, stop } = useChat({
+  const { messages, sendMessage, status, stop } = useChat<ResearchOwlUIMessage>({
     transport,
   });
 
@@ -194,12 +196,24 @@ export default function ChatPage() {
                           </ReasoningContent>
                         </Reasoning>
                       )}
-                      <MessageResponse>
-                        {message.parts
-                          .filter((part) => part.type === "text")
-                          .map((part) => ("text" in part ? part.text : ""))
-                          .join("")}
-                      </MessageResponse>
+                      {message.parts.map((part, i) => {
+                        if (part.type === "text") {
+                          return (
+                            <MessageResponse key={`${message.id}-${i}`}>
+                              {part.text}
+                            </MessageResponse>
+                          );
+                        }
+                        if (part.type === "tool-search_chunks") {
+                          return (
+                            <SearchChunksTool
+                              key={`${message.id}-${i}`}
+                              part={part}
+                            />
+                          );
+                        }
+                        return null;
+                      })}
                       {index === messages.length - 1 &&
                         isStreaming &&
                         message.parts.length === 0 && <Spinner />}
