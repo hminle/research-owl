@@ -4,6 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import { ListPapersTool } from "@/components/list-papers-tool";
 import { SearchChunksTool } from "@/components/search-chunks-tool";
 import type { ResearchOwlUIMessage } from "@/lib/agents/research-owl";
 import {
@@ -204,7 +205,15 @@ export default function ChatPage() {
                             </MessageResponse>
                           );
                         }
-                        if (part.type === "tool-search_chunks") {
+                        if (part.type === "tool-list_papers") {
+                          return (
+                            <ListPapersTool
+                              key={`${message.id}-${i}`}
+                              part={part}
+                            />
+                          );
+                        }
+                        if (part.type === "tool-search_chunks" || part.type === "tool-graph_search") {
                           return (
                             <SearchChunksTool
                               key={`${message.id}-${i}`}

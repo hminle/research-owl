@@ -20,11 +20,14 @@ export const searchChunksTool = tool({
     "Search the knowledge base of ingested research papers by semantic similarity. " +
     "Use this tool when the user asks about specific paper content, needs evidence or citations, " +
     "or when you need to ground your response in actual paper text. " +
-    "Returns relevant text chunks with paper titles and relevance scores.",
+    "Returns relevant text chunks with paper titles and relevance scores. " +
+    "Include the paper name or topic directly in the query for best results — do NOT use paper_id unless you know the exact arxiv ID (e.g. '2004.01354').",
   inputSchema: z.object({
     query: z
       .string()
-      .describe("The search query to find relevant paper chunks"),
+      .describe(
+        "The search query to find relevant paper chunks. Include the paper name or key terms in the query for best results."
+      ),
     top_k: z
       .number()
       .min(1)
@@ -34,7 +37,10 @@ export const searchChunksTool = tool({
     paper_id: z
       .string()
       .optional()
-      .describe("Optional paper ID to scope the search to a specific paper"),
+      .describe(
+        "Optional arxiv paper ID (e.g. '2004.01354') to scope search to a specific paper. " +
+        "Do NOT pass paper titles here — only use exact arxiv IDs. Omit if unsure."
+      ),
   }),
   execute: async ({ query, top_k, paper_id }) => {
     const res = await ragFetch("/chunks/search", {

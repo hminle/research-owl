@@ -82,6 +82,36 @@ CREATE TABLE IF NOT EXISTS eval_runs (
 """
 
 
+_CREATE_CITATIONS_TABLE = """
+CREATE TABLE IF NOT EXISTS citations (
+    citing_id TEXT NOT NULL,
+    cited_id  TEXT NOT NULL,
+    PRIMARY KEY (citing_id, cited_id)
+);
+"""
+
+_CREATE_ENTITIES_TABLE = """
+CREATE TABLE IF NOT EXISTS entities (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    type            TEXT NOT NULL,
+    name            TEXT NOT NULL,
+    normalized_name TEXT NOT NULL,
+    description     TEXT,
+    UNIQUE(type, normalized_name)
+);
+"""
+
+_CREATE_PAPER_ENTITIES_TABLE = """
+CREATE TABLE IF NOT EXISTS paper_entities (
+    paper_id   TEXT NOT NULL,
+    entity_id  INTEGER NOT NULL,
+    relation   TEXT NOT NULL,
+    context    TEXT,
+    PRIMARY KEY (paper_id, entity_id, relation)
+);
+"""
+
+
 def _connect(db_path: Path) -> sqlite3.Connection:
     conn = sqlite3.connect(str(db_path), check_same_thread=False)
     conn.row_factory = sqlite3.Row
@@ -102,6 +132,9 @@ def init_db(db_path: Path) -> None:
     _conn.execute(_CREATE_EVAL_DATASETS_TABLE)
     _conn.execute(_CREATE_EVAL_ITEMS_TABLE)
     _conn.execute(_CREATE_EVAL_RUNS_TABLE)
+    _conn.execute(_CREATE_CITATIONS_TABLE)
+    _conn.execute(_CREATE_ENTITIES_TABLE)
+    _conn.execute(_CREATE_PAPER_ENTITIES_TABLE)
     _conn.commit()
 
 
@@ -148,6 +181,31 @@ def list_papers() -> list[PaperMetadata]:
     conn = _get_conn()
     rows = conn.execute("SELECT * FROM papers ORDER BY created_at DESC").fetchall()
     return [PaperMetadata(**dict(r)) for r in rows]
+
+
+def resolve_paper_id(paper_id_or_name: str) -> str | None:
+    """Resolve a paper_id or title to the actual paper_id.
+
+    Returns the paper_id if found by exact ID match, or by case-insensitive
+    title substring match. Returns None if no match.
+    """
+    conn = _get_conn()
+    # Try exact ID match first
+    row = conn.execute(
+        "SELECT paper_id FROM papers WHERE paper_id = ?", (paper_id_or_name,)
+    ).fetchone()
+    if row:
+        return row["paper_id"]
+
+    # Try case-insensitive title match
+    row = conn.execute(
+        "SELECT paper_id FROM papers WHERE LOWER(title) LIKE '%' || LOWER(?) || '%'",
+        (paper_id_or_name,),
+    ).fetchone()
+    if row:
+        return row["paper_id"]
+
+    return None
 
 
 def save_images(paper_id: str, images: list[dict]) -> None:
@@ -404,4 +462,164 @@ def get_eval_stats(dataset_id: str | None = None) -> dict:
         "total_runs": total_runs,
         "total_items": total_items,
         "trends": trends,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Citations
+# ---------------------------------------------------------------------------
+
+
+def save_citations(citing_id: str, cited_ids: list[str]) -> int:
+    """Store citation edges. Returns number of new citations added."""
+    conn = _get_conn()
+    count = 0
+    for cited_id in cited_ids:
+        try:
+            conn.execute(
+                "INSERT OR IGNORE INTO citations (citing_id, cited_id) VALUES (?, ?)",
+                (citing_id, cited_id),
+            )
+            count += 1
+        except Exception:
+            pass
+    conn.commit()
+    return count
+
+
+def get_citations(paper_id: str, direction: str = "outgoing") -> list[str]:
+    """Get citation IDs. direction: 'outgoing' (this paper cites) or 'incoming' (cited by)."""
+    conn = _get_conn()
+    if direction == "outgoing":
+        rows = conn.execute("SELECT cited_id FROM citations WHERE citing_id = ?", (paper_id,)).fetchall()
+        return [r["cited_id"] for r in rows]
+    else:
+        rows = conn.execute("SELECT citing_id FROM citations WHERE cited_id = ?", (paper_id,)).fetchall()
+        return [r["citing_id"] for r in rows]
+
+
+def get_all_citations() -> list[tuple[str, str]]:
+    """Get all citation edges as (citing_id, cited_id) tuples."""
+    conn = _get_conn()
+    rows = conn.execute("SELECT citing_id, cited_id FROM citations").fetchall()
+    return [(r["citing_id"], r["cited_id"]) for r in rows]
+
+
+# ---------------------------------------------------------------------------
+# Entities
+# ---------------------------------------------------------------------------
+
+
+def upsert_entity(entity_type: str, name: str, normalized_name: str, description: str | None = None) -> int:
+    """Insert or update an entity. Returns the entity ID."""
+    conn = _get_conn()
+    row = conn.execute(
+        "SELECT id FROM entities WHERE type = ? AND normalized_name = ?",
+        (entity_type, normalized_name),
+    ).fetchone()
+    if row:
+        if description:
+            conn.execute(
+                "UPDATE entities SET description = ? WHERE id = ?",
+                (description, row["id"]),
+            )
+            conn.commit()
+        return row["id"]
+    cur = conn.execute(
+        "INSERT INTO entities (type, name, normalized_name, description) VALUES (?, ?, ?, ?)",
+        (entity_type, name, normalized_name, description),
+    )
+    conn.commit()
+    return cur.lastrowid  # type: ignore[return-value]
+
+
+def add_paper_entity(paper_id: str, entity_id: int, relation: str, context: str | None = None) -> None:
+    """Link a paper to an entity with a relation type."""
+    conn = _get_conn()
+    conn.execute(
+        "INSERT OR IGNORE INTO paper_entities (paper_id, entity_id, relation, context) VALUES (?, ?, ?, ?)",
+        (paper_id, entity_id, relation, context),
+    )
+    conn.commit()
+
+
+def get_paper_entities(paper_id: str) -> list[dict]:
+    """Get all entities for a paper."""
+    conn = _get_conn()
+    rows = conn.execute(
+        "SELECT e.id, e.type, e.name, e.normalized_name, e.description, pe.relation, pe.context "
+        "FROM paper_entities pe JOIN entities e ON pe.entity_id = e.id "
+        "WHERE pe.paper_id = ? ORDER BY e.type, e.name",
+        (paper_id,),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_entity_papers(entity_type: str, normalized_name: str) -> list[dict]:
+    """Get all papers connected to an entity."""
+    conn = _get_conn()
+    rows = conn.execute(
+        "SELECT p.paper_id, p.title, pe.relation, pe.context "
+        "FROM paper_entities pe "
+        "JOIN entities e ON pe.entity_id = e.id "
+        "JOIN papers p ON pe.paper_id = p.paper_id "
+        "WHERE e.type = ? AND e.normalized_name = ? "
+        "ORDER BY p.paper_id",
+        (entity_type, normalized_name),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def search_entities(entity_type: str | None = None, query: str | None = None) -> list[dict]:
+    """Search entities by type and/or name substring."""
+    conn = _get_conn()
+    conditions = []
+    params: list[str] = []
+    if entity_type:
+        conditions.append("e.type = ?")
+        params.append(entity_type)
+    if query:
+        conditions.append("e.normalized_name LIKE ?")
+        params.append(f"%{query.lower()}%")
+    where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+    rows = conn.execute(
+        f"SELECT e.*, COUNT(pe.paper_id) as paper_count "
+        f"FROM entities e LEFT JOIN paper_entities pe ON e.id = pe.entity_id "
+        f"{where} GROUP BY e.id ORDER BY paper_count DESC, e.name",
+        params,
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_papers_for_entity_names(normalized_names: list[str]) -> list[str]:
+    """Get paper IDs connected to any of the given entity names."""
+    if not normalized_names:
+        return []
+    conn = _get_conn()
+    placeholders = ",".join("?" for _ in normalized_names)
+    rows = conn.execute(
+        f"SELECT DISTINCT pe.paper_id FROM paper_entities pe "
+        f"JOIN entities e ON pe.entity_id = e.id "
+        f"WHERE e.normalized_name IN ({placeholders})",
+        normalized_names,
+    ).fetchall()
+    return [r["paper_id"] for r in rows]
+
+
+def get_graph_stats() -> dict:
+    """Get graph statistics."""
+    conn = _get_conn()
+    num_papers = conn.execute("SELECT COUNT(*) FROM papers WHERE status = 'completed'").fetchone()[0]
+    num_citations = conn.execute("SELECT COUNT(*) FROM citations").fetchone()[0]
+    num_entities = conn.execute("SELECT COUNT(*) FROM entities").fetchone()[0]
+    num_relations = conn.execute("SELECT COUNT(*) FROM paper_entities").fetchone()[0]
+    entity_types = conn.execute(
+        "SELECT type, COUNT(*) as count FROM entities GROUP BY type ORDER BY count DESC"
+    ).fetchall()
+    return {
+        "papers": num_papers,
+        "citations": num_citations,
+        "entities": num_entities,
+        "relations": num_relations,
+        "entity_types": {r["type"]: r["count"] for r in entity_types},
     }

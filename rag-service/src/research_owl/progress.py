@@ -24,6 +24,7 @@ PIPELINE_STEPS = [
     "download",
     "extract_text",
     "embed_chunks",
+    "extract_entities",
     "parse_citations",
     "collect_images",
 ]

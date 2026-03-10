@@ -23,31 +23,42 @@ from fastapi.staticfiles import StaticFiles
 from research_owl.config import settings
 from research_owl.db import (
     add_eval_items,
+    add_paper_entity,
     create_eval_dataset,
     create_eval_run,
     create_paper,
     delete_eval_dataset,
     delete_eval_item,
+    get_citations,
     get_eval_dataset,
     get_eval_dataset_detail,
     get_eval_run,
     get_eval_run_detail,
     get_eval_stats,
+    get_graph_stats,
     get_images,
     get_paper,
+    get_paper_entities,
     init_db,
     list_eval_datasets,
     list_eval_items,
     list_eval_runs,
     list_papers,
+    resolve_paper_id,
+    save_citations,
     save_images,
+    search_entities,
     update_eval_dataset,
     update_eval_item,
     update_eval_run,
     update_paper,
+    upsert_entity,
 )
 from research_owl.ingestion.citation_parser import parse_citations
+from research_owl.ingestion.entity_extractor import extract_entities, normalize_name
 from research_owl.ingestion.pipeline import process_pdf
+from research_owl.graph_service import GraphService
+from research_owl.hybrid_retriever import HybridRetriever
 from research_owl.qdrant_service import QdrantRAGService
 from research_owl.progress import (
     StepStatus,
@@ -86,6 +97,8 @@ load_dotenv()
 logger = logging.getLogger(__name__)
 
 rag_service: QdrantRAGService
+graph_service: GraphService
+hybrid_retriever: HybridRetriever
 
 ARXIV_ID_PATTERN = re.compile(r"(\d{4}\.\d{4,5})")
 
@@ -99,7 +112,7 @@ def extract_arxiv_id(url: str) -> str:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global rag_service
+    global rag_service, graph_service, hybrid_retriever
 
     logging.basicConfig(level=logging.INFO)
 
@@ -117,6 +130,11 @@ async def lifespan(app: FastAPI):
         qdrant_url=settings.qdrant_url,
     )
     await rag_service.initialize()
+
+    graph_service = GraphService()
+    graph_service.rebuild()
+
+    hybrid_retriever = HybridRetriever(graph=graph_service, rag=rag_service)
 
     logger.info("Research Owl RAG service started")
     yield
@@ -187,7 +205,7 @@ async def _async_ingest(paper_id: str, arxiv_url: str, skip_embedding: bool = Fa
         if skip_embedding:
             # Skip embedding/chunking — just count existing vectors in Qdrant
             num_chunks = await rag_service.count_vectors(paper_id)
-            for step in ("embed_chunks", "parse_citations", "collect_images"):
+            for step in ("embed_chunks", "extract_entities", "parse_citations", "collect_images"):
                 update_step(paper_id, step, StepStatus.completed)
             current_step = None
 
@@ -222,7 +240,31 @@ async def _async_ingest(paper_id: str, arxiv_url: str, skip_embedding: bool = Fa
 
         update_step(paper_id, "embed_chunks", StepStatus.completed)
 
-        # Step 4: Parse citations
+        # Step 4: Extract entities
+        current_step = "extract_entities"
+        update_step(paper_id, "extract_entities", StepStatus.in_progress)
+
+        try:
+            extraction = await extract_entities(
+                paper_id=paper_id,
+                text=pipeline_result.full_text,
+                openai_client=rag_service.openai,
+                model=settings.llm_model,
+            )
+            for entity in extraction.entities:
+                norm = normalize_name(entity.name)
+                entity_id = upsert_entity(entity.type, entity.name, norm, entity.description)
+                # Find matching relations for this entity
+                for rel in extraction.relations:
+                    if rel.entity_name == entity.name:
+                        add_paper_entity(paper_id, entity_id, rel.predicate, rel.context)
+            logger.info("Stored %d entities for paper %s", len(extraction.entities), paper_id)
+        except Exception as e:
+            logger.warning("Entity extraction failed for %s: %s (non-fatal)", paper_id, e)
+
+        update_step(paper_id, "extract_entities", StepStatus.completed)
+
+        # Step 5: Parse citations
         current_step = "parse_citations"
         update_step(paper_id, "parse_citations", StepStatus.in_progress)
 
@@ -230,10 +272,12 @@ async def _async_ingest(paper_id: str, arxiv_url: str, skip_embedding: bool = Fa
             pipeline_result.full_text,
             exclude_id=paper_id,
         )
+        if citations:
+            save_citations(paper_id, [c["arxiv_id"] for c in citations])
 
         update_step(paper_id, "parse_citations", StepStatus.completed)
 
-        # Step 5: Collect images
+        # Step 6: Collect images
         current_step = "collect_images"
         update_step(paper_id, "collect_images", StepStatus.in_progress)
 
@@ -253,6 +297,9 @@ async def _async_ingest(paper_id: str, arxiv_url: str, skip_embedding: bool = Fa
             num_chunks=ingest_result["num_chunks"],
             num_images=num_images,
         )
+        # Rebuild in-memory graph with new data
+        graph_service.rebuild()
+
         logger.info(
             "Ingestion completed for paper %s: %d chunks, %d images, %d citations",
             paper_id,
@@ -442,10 +489,15 @@ async def list_chunks(
 @app.post("/chunks/search")
 async def search_chunks(request: ChunkSearchRequest):
     """Search chunks by semantic similarity."""
+    paper_id = request.paper_id
+    if paper_id:
+        resolved = resolve_paper_id(paper_id)
+        if resolved:
+            paper_id = resolved
     results = await rag_service.search_chunks(
         query=request.query,
         top_k=request.top_k,
-        paper_id=request.paper_id,
+        paper_id=paper_id,
     )
     return results
 
@@ -726,6 +778,51 @@ async def eval_run_progress(run_id: str):
 @app.get("/eval/stats", response_model=EvalStats)
 async def eval_stats(dataset_id: str | None = None):
     return get_eval_stats(dataset_id)
+
+
+# ---------------------------------------------------------------------------
+# Graph — Citations & Entities
+# ---------------------------------------------------------------------------
+
+
+@app.get("/graph/paper/{paper_id}/citations")
+async def paper_citations(paper_id: str, direction: str = "outgoing"):
+    """Get papers cited by / citing this paper."""
+    return graph_service.get_paper_citations(paper_id, direction)
+
+
+@app.get("/graph/paper/{paper_id}/entities")
+async def paper_entities(paper_id: str):
+    """Get all entities extracted from a paper."""
+    return get_paper_entities(paper_id)
+
+
+@app.get("/graph/paper/{paper_id}/network")
+async def paper_network(paper_id: str, depth: int = 2):
+    """Get N-hop subgraph around a paper."""
+    return graph_service.get_network(paper_id, depth=min(depth, 3), max_nodes=100)
+
+
+@app.get("/graph/entities")
+async def list_entities(type: str | None = None, q: str | None = None):
+    """Search entities by type and/or name substring."""
+    return search_entities(entity_type=type, query=q)
+
+
+@app.get("/graph/stats")
+async def graph_stats():
+    """Get graph statistics."""
+    return get_graph_stats()
+
+
+@app.post("/graph/search")
+async def graph_search(request: ChunkSearchRequest):
+    """Hybrid graph+vector search. Uses entity matching to scope vector search."""
+    results = await hybrid_retriever.retrieve(
+        query=request.query,
+        top_k=request.top_k,
+    )
+    return results
 
 
 # ---------------------------------------------------------------------------

@@ -12,6 +12,7 @@ dependencies = [
     "qdrant-client",
     "pydantic-settings",
     "python-dotenv",
+    "networkx>=3.0",
 ]
 
 [build-system]
