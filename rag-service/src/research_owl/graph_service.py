@@ -1,6 +1,6 @@
 """In-memory graph built from SQLite data using NetworkX.
 
-Provides citation traversal, entity relationships, and community detection
+Provides citation traversal and entity relationships
 without requiring a separate graph database.
 """
 
@@ -177,17 +177,3 @@ class GraphService:
 
         return list(results.values())
 
-    def find_communities(self) -> list[set[str]]:
-        """Detect communities using Louvain algorithm."""
-        if self.graph.number_of_nodes() < 3:
-            return []
-        undirected = self.graph.to_undirected()
-        return list(nx.community.louvain_communities(undirected, seed=42))
-
-    def shortest_path(self, source: str, target: str) -> list[str] | None:
-        """Find shortest path between two nodes."""
-        try:
-            undirected = self.graph.to_undirected()
-            return nx.shortest_path(undirected, source, target)
-        except (nx.NetworkXNoPath, nx.NodeNotFound):
-            return None

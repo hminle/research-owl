@@ -397,9 +397,18 @@ class QdrantRAGService:
 
         return {"items": items, "total": count_result.count}
 
-    async def search_chunks(self, query: str, top_k: int = 10, paper_id: str | None = None) -> list[dict]:
+    async def search_chunks(
+        self,
+        query: str,
+        top_k: int = 10,
+        paper_id: str | None = None,
+        query_vector: list[float] | None = None,
+    ) -> list[dict]:
         """Search chunks by semantic similarity for the explorer."""
-        [query_embedding] = await self.embed_texts([query])
+        if query_vector is not None:
+            query_embedding = query_vector
+        else:
+            [query_embedding] = await self.embed_texts([query])
 
         query_filter = None
         if paper_id:

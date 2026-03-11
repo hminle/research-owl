@@ -7,6 +7,7 @@ Reciprocal Rank Fusion (RRF).
 
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from research_owl.db import get_papers_for_entity_names, search_entities
@@ -62,30 +63,37 @@ class HybridRetriever:
         # Step 2: Get paper IDs from graph
         graph_paper_ids = get_papers_for_entity_names(entity_names)
 
-        # Build graph context map
+        # Build graph context map — call once, index by paper_id
         graph_context: dict[str, list[str]] = {}
-        for pid in graph_paper_ids:
+        if entity_names:
             paper_results = self.graph.get_papers_for_entities(entity_names)
             for pr in paper_results:
-                if pr["paper_id"] == pid:
-                    graph_context[pid] = pr.get("connections", [])
-                    break
+                graph_context[pr["paper_id"]] = pr.get("connections", [])
+
+        # Embed query once, reuse for all vector searches
+        [query_vector] = await self.rag.embed_texts([query])
 
         # Step 3: Scoped vector search (only if we found graph papers)
         scoped_results: list[dict] = []
         if graph_paper_ids:
-            for pid in graph_paper_ids[:5]:  # Limit to top 5 papers
-                chunks = await self.rag.search_chunks(
+            scoped_tasks = [
+                self.rag.search_chunks(
                     query=query,
                     top_k=3,
                     paper_id=pid,
+                    query_vector=query_vector,
                 )
-                scoped_results.extend(chunks)
+                for pid in graph_paper_ids[:5]
+            ]
+            scoped_batches = await asyncio.gather(*scoped_tasks)
+            for batch in scoped_batches:
+                scoped_results.extend(batch)
 
         # Step 4: Global vector search
         global_results = await self.rag.search_chunks(
             query=query,
             top_k=top_k,
+            query_vector=query_vector,
         )
 
         # Step 5: Merge with RRF
