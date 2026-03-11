@@ -54,6 +54,7 @@ from research_owl.db import (
     update_paper,
     upsert_entity,
 )
+from research_owl.arxiv_search import search_arxiv
 from research_owl.ingestion.citation_parser import parse_citations
 from research_owl.ingestion.entity_extractor import extract_entities, normalize_name
 from research_owl.ingestion.pipeline import process_pdf
@@ -68,6 +69,9 @@ from research_owl.progress import (
     wait_for_update,
 )
 from research_owl.models import (
+    ArxivSearchRequest,
+    ArxivSearchResponse,
+    ArxivSearchResultItem,
     ChunkListResponse,
     ChunkSearchRequest,
     CollectionStats,
@@ -363,6 +367,35 @@ async def ingest(request: IngestRequest, background_tasks: BackgroundTasks):
 
     background_tasks.add_task(_async_ingest, paper_id, request.arxiv_url, request.skip_embedding)
     return IngestResponse(paper_id=paper_id, status=PaperStatus.pending)
+
+
+# ---------------------------------------------------------------------------
+# ArXiv Search
+# ---------------------------------------------------------------------------
+
+
+@app.post("/search/arxiv", response_model=ArxivSearchResponse)
+async def arxiv_search(request: ArxivSearchRequest):
+    """Search arXiv for papers matching a query."""
+    raw_results = await asyncio.to_thread(
+        search_arxiv,
+        query=request.query,
+        max_results=request.max_results,
+        sort_by=request.sort_by,
+    )
+    items = [
+        ArxivSearchResultItem(
+            arxiv_id=r.arxiv_id,
+            title=r.title,
+            authors=r.authors,
+            abstract=r.abstract,
+            pdf_url=r.pdf_url,
+            published=r.published,
+            categories=r.categories,
+        )
+        for r in raw_results
+    ]
+    return ArxivSearchResponse(results=items, total=len(items))
 
 
 # ---------------------------------------------------------------------------

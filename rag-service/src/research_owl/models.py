@@ -10,6 +10,30 @@ class PaperStatus(str, Enum):
     failed = "failed"
 
 
+# --- ArXiv Search ---
+
+
+class ArxivSearchRequest(BaseModel):
+    query: str
+    max_results: int = 10
+    sort_by: str = "relevance"
+
+
+class ArxivSearchResultItem(BaseModel):
+    arxiv_id: str
+    title: str
+    authors: list[str]
+    abstract: str
+    pdf_url: str
+    published: str
+    categories: list[str]
+
+
+class ArxivSearchResponse(BaseModel):
+    results: list[ArxivSearchResultItem]
+    total: int
+
+
 # --- Ingest ---
 
 

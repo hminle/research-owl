@@ -13,6 +13,7 @@ dependencies = [
     "pydantic-settings",
     "python-dotenv",
     "networkx>=3.0",
+    "arxiv>=2.0",
 ]
 
 [build-system]
