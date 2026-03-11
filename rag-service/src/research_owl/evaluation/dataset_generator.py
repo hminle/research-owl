@@ -174,8 +174,8 @@ def get_paper_text(paper_id: str) -> str | None:
     pdf_path = settings.data_dir / "pdfs" / f"{paper_id}.pdf"
     if pdf_path.exists():
         try:
-            from research_owl.ingestion.pipeline import extract_text
-            _title, full_text = extract_text(pdf_path)
+            from research_owl.ingestion.pipeline import extract_text_and_figures
+            _title, full_text, _num_images = extract_text_and_figures(pdf_path)
             return full_text
         except Exception:
             logger.exception("Failed to re-extract text for paper %s", paper_id)
