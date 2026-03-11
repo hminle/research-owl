@@ -184,15 +184,20 @@ async def _async_ingest(paper_id: str, arxiv_url: str, skip_embedding: bool = Fa
     try:
         update_paper(paper_id, status=PaperStatus.processing.value)
 
-        # Step 1: Download + extract text (handled together by process_pdf)
+        # Step 1: Download + extract text + export figures (handled by process_pdf)
         current_step = "download"
         update_step(paper_id, "download", StepStatus.in_progress)
+
+        output_dir = settings.parsed_dir / paper_id
+        output_dir.mkdir(parents=True, exist_ok=True)
 
         pipeline_result = await asyncio.to_thread(
             process_pdf,
             arxiv_url=arxiv_url,
             paper_id=paper_id,
             download_dir=settings.data_dir / "pdfs",
+            output_dir=output_dir,
+            images_scale=settings.images_scale,
         )
 
         update_step(paper_id, "download", StepStatus.completed)
@@ -224,12 +229,9 @@ async def _async_ingest(paper_id: str, arxiv_url: str, skip_embedding: bool = Fa
             )
             return
 
-        # Step 3: Embed chunks into Qdrant (text + images)
+        # Step 3: Embed chunks into Qdrant (text + images described by vision model)
         current_step = "embed_chunks"
         update_step(paper_id, "embed_chunks", StepStatus.in_progress)
-
-        output_dir = settings.data_dir / "parsed" / paper_id
-        output_dir.mkdir(parents=True, exist_ok=True)
 
         ingest_result = await rag_service.ingest_document(
             paper_id=paper_id,
