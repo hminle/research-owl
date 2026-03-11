@@ -3,6 +3,7 @@ import { extractReasoningMiddleware, wrapLanguageModel } from "ai";
 
 export const AVAILABLE_MODELS = [
   { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+  { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro" },
   { id: "anthropic/claude-haiku-4.5", label: "Claude Haiku 4.5" },
   { id: "anthropic/claude-sonnet-4.5-thinking", label: "Claude Sonnet 4.5 (Thinking)" },
 ] as const;

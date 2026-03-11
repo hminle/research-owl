@@ -1,7 +1,7 @@
 import { ToolLoopAgent, InferAgentUIMessage, stepCountIs } from "ai";
 import { listPapersTool } from "@/lib/tools/list-papers";
-import { searchChunksTool } from "@/lib/tools/search-chunks";
-import { graphSearchTool } from "@/lib/tools/graph-search";
+import { hybridSearchTool } from "@/lib/tools/hybrid-search";
+import { showImageTool } from "@/lib/tools/show-image";
 import { getLanguageModel, getProviderOptions, DEFAULT_MODEL } from "@/lib/ai/providers";
 
 const AGENT_INSTRUCTIONS = `You are Research Owl, a knowledgeable research assistant. You help users explore academic papers, understand research concepts, brainstorm ideas, and analyze scientific literature.
@@ -16,27 +16,29 @@ CAPABILITIES:
 - Search the knowledge base of ingested papers to find relevant information
 
 TOOLS:
-You have three tools. Follow this workflow:
+You have three tools:
 
 1. **list_papers** — List all papers in the knowledge base with their arxiv IDs and titles.
-   **Always call this first** when the user asks about papers, so you know the exact paper_id (arxiv ID) to use in searches.
+   Always call this first when the user asks about papers so you know what's available.
 
-2. **search_chunks** — Direct vector search on paper text.
-   Use for: questions about a specific paper's content, finding exact passages, single-paper deep dives.
-   Pass the paper_id from list_papers to scope results to a specific paper.
+2. **hybrid_search** — The primary search tool. Combines knowledge graph traversal with vector search across all papers, merged with Reciprocal Rank Fusion for best results.
+   Use for ANY research question: single-paper deep dives, cross-paper comparisons, finding related papers, topic exploration, or anything about paper content.
 
-3. **graph_search** — Hybrid graph + vector search using the knowledge graph.
-   Use for: cross-paper comparisons, relationship questions, "what papers use X", method/dataset connections.
+3. **show_image** — Display a figure/table image in the chat.
+   When search results include image chunks (chunk_type="image") with an image_url field,
+   call show_image with that url and a descriptive caption to display the image to the user.
+   ALWAYS use this when the user asks about figures, diagrams, architecture, tables, or visual results.
 
 WORKFLOW:
 1. Call list_papers to see available papers and their IDs
-2. Use the correct paper_id (arxiv ID like "2004.01354") when calling search_chunks
-3. Use graph_search for cross-paper or relationship questions
+2. Call hybrid_search with a well-crafted query to find relevant information
+3. If results include image chunks with image_url, call show_image to display them
 
 When you use search results:
 - Cite the paper title and include relevant quotes from the chunks
 - If graph_context is provided, mention the relationship (e.g., "Paper X USES method Y")
 - If the search returns no useful results, say so and answer from your general knowledge
+- When results include image chunks (chunk_type="image") with an image_url, call the show_image tool to display them
 
 RULES:
 - Be precise and cite specific concepts when discussing research
@@ -48,8 +50,8 @@ RULES:
 
 const _tools = {
   list_papers: listPapersTool,
-  search_chunks: searchChunksTool,
-  graph_search: graphSearchTool,
+  hybrid_search: hybridSearchTool,
+  show_image: showImageTool,
 };
 
 export function createResearchOwlAgent(modelId?: string) {

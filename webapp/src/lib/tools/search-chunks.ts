@@ -10,18 +10,32 @@ const chunkSchema = z.object({
   chunk_index: z.number(),
   content: z.string(),
   image_filename: z.string().nullable().optional(),
+  image_url: z.string().nullable().optional(),
   score: z.number(),
 });
 
 export type ChunkResult = z.infer<typeof chunkSchema>;
 
+export function enrichImageUrls<T extends { chunk_type: string; paper_id: string; image_filename?: string | null }>(
+  chunks: T[],
+): (T & { image_url?: string | null })[] {
+  return chunks.map((chunk) => ({
+    ...chunk,
+    image_url:
+      chunk.chunk_type === "image" && chunk.image_filename
+        ? `/api/rag/images/${chunk.paper_id}/${chunk.image_filename}`
+        : null,
+  }));
+}
+
 export const searchChunksTool = tool({
   description:
-    "Search the knowledge base of ingested research papers by semantic similarity. " +
-    "Use this tool when the user asks about specific paper content, needs evidence or citations, " +
-    "or when you need to ground your response in actual paper text. " +
-    "Returns relevant text chunks with paper titles and relevance scores. " +
-    "Include the paper name or topic directly in the query for best results — do NOT use paper_id unless you know the exact arxiv ID (e.g. '2004.01354').",
+    "Vector search within a SINGLE paper's text and figures. " +
+    "Use ONLY for questions about one specific paper's content, finding exact passages, or single-paper deep dives. " +
+    "Always pass a paper_id to scope results. " +
+    "Do NOT use for cross-paper questions, comparisons, or finding related papers — use graph_search instead. " +
+    "Returns relevant text chunks and image chunks with paper titles and relevance scores. " +
+    "Image chunks include an image_url you can embed with markdown: ![description](image_url)",
   inputSchema: z.object({
     query: z
       .string()
@@ -49,7 +63,7 @@ export const searchChunksTool = tool({
       body: JSON.stringify({ query, top_k, paper_id }),
     });
     const chunks: ChunkResult[] = await res.json();
-    return chunks;
+    return enrichImageUrls(chunks);
   },
 });
 

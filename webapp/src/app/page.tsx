@@ -5,7 +5,8 @@ import { DefaultChatTransport } from "ai";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { ListPapersTool } from "@/components/list-papers-tool";
-import { SearchChunksTool } from "@/components/search-chunks-tool";
+import { HybridSearchTool } from "@/components/hybrid-search-tool";
+import { ShowImageTool } from "@/components/show-image-tool";
 import type { ResearchOwlUIMessage } from "@/lib/agents/research-owl";
 import {
   Conversation,
@@ -213,9 +214,17 @@ export default function ChatPage() {
                             />
                           );
                         }
-                        if (part.type === "tool-search_chunks" || part.type === "tool-graph_search") {
+                        if (part.type === "tool-hybrid_search") {
                           return (
-                            <SearchChunksTool
+                            <HybridSearchTool
+                              key={`${message.id}-${i}`}
+                              part={part}
+                            />
+                          );
+                        }
+                        if (part.type === "tool-show_image") {
+                          return (
+                            <ShowImageTool
                               key={`${message.id}-${i}`}
                               part={part}
                             />

@@ -6,33 +6,34 @@ import {
   ToolContent,
   ToolHeader,
 } from "@/components/ai-elements/tool";
-import { FileText, Image } from "lucide-react";
-import type { ChunkResult } from "@/lib/tools/search-chunks";
+import { FileText, Image, Network } from "lucide-react";
+import type { HybridSearchResult } from "@/lib/tools/hybrid-search";
 
-interface SearchChunksToolProps {
+interface HybridSearchToolProps {
   part: ToolUIPart;
 }
 
-export function SearchChunksTool({ part }: SearchChunksToolProps) {
+export function HybridSearchTool({ part }: HybridSearchToolProps) {
   const input = part.input as
-    | { query?: string; top_k?: number; paper_id?: string }
+    | { query?: string; top_k?: number }
     | undefined;
-  const output = part.output as ChunkResult[] | undefined;
+  const output = part.output as HybridSearchResult[] | undefined;
   const query = input?.query;
 
   return (
     <Tool defaultOpen>
       <ToolHeader
         state={part.state}
-        title={query ? `Searching: "${query}"` : "Searching knowledge base..."}
+        title={query ? `Hybrid search: "${query}"` : "Searching papers..."}
         type={part.type}
+        icon={<Network className="h-4 w-4" />}
       />
       {part.state === "output-available" && output && (
         <ToolContent>
           <div className="space-y-2 p-3">
             <p className="text-xs text-muted-foreground">
               Found {output.length} result
-              {output.length !== 1 ? "s" : ""}
+              {output.length !== 1 ? "s" : ""} across knowledge graph
             </p>
             {output.map((chunk) => (
               <div
@@ -49,9 +50,15 @@ export function SearchChunksTool({ part }: SearchChunksToolProps) {
                     {chunk.paper_title || chunk.paper_id}
                   </span>
                   <span className="ml-auto shrink-0">
-                    {(chunk.score * 100).toFixed(0)}% match
+                    {(chunk.rrf_score * 100).toFixed(0)}% relevance
                   </span>
                 </div>
+                {chunk.graph_context && (
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <Network className="h-3 w-3 text-primary/70" />
+                    <span className="text-primary/70">{chunk.graph_context}</span>
+                  </div>
+                )}
                 {chunk.image_url && (
                   <img
                     src={chunk.image_url}
