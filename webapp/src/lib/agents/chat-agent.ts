@@ -54,7 +54,7 @@ const _tools = {
   show_image: showImageTool,
 };
 
-export function createResearchOwlAgent(modelId?: string) {
+export function createChatAgent(modelId?: string) {
   const id = modelId ?? DEFAULT_MODEL;
   const model = getLanguageModel(id);
   const providerOptions = getProviderOptions(id);
@@ -75,4 +75,4 @@ const _defaultAgent = new ToolLoopAgent({
   tools: _tools,
 });
 
-export type ResearchOwlUIMessage = InferAgentUIMessage<typeof _defaultAgent>;
+export type ChatAgentUIMessage = InferAgentUIMessage<typeof _defaultAgent>;

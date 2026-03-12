@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ListPapersTool } from "@/components/list-papers-tool";
 import { HybridSearchTool } from "@/components/hybrid-search-tool";
 import { ShowImageTool } from "@/components/show-image-tool";
-import type { ResearchOwlUIMessage } from "@/lib/agents/research-owl";
+import type { ChatAgentUIMessage } from "@/lib/agents/chat-agent";
 import {
   Conversation,
   ConversationContent,
@@ -91,7 +91,7 @@ export default function ChatPage() {
       })
   );
 
-  const { messages, sendMessage, status, stop } = useChat<ResearchOwlUIMessage>({
+  const { messages, sendMessage, status, stop } = useChat<ChatAgentUIMessage>({
     transport,
   });
 

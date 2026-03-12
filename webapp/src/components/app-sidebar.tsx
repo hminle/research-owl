@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { FileUp, FlaskConical, Library, MessageSquare, Layers, Network, Presentation } from "lucide-react";
+import { FileUp, FlaskConical, Library, MessageSquare, Microscope, Layers, Network, Presentation } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -18,6 +18,7 @@ import {
 
 const NAV_ITEMS = [
   { label: "Chat", href: "/", icon: MessageSquare },
+  { label: "Research", href: "/research", icon: Microscope },
   { label: "Ingest Paper", href: "/ingest", icon: FileUp },
   { label: "Papers", href: "/papers", icon: Library },
   { label: "Documents", href: "/documents", icon: Layers },
