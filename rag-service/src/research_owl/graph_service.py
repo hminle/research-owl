@@ -88,6 +88,56 @@ class GraphService:
             self.graph.number_of_edges(),
         )
 
+    def get_citation_graph(self) -> dict:
+        """Return full citation graph (paper nodes + CITES edges only)."""
+        nodes = []
+        for node_id, data in self.graph.nodes(data=True):
+            if data.get("kind") == "Paper":
+                nodes.append({
+                    "id": node_id,
+                    "kind": "Paper",
+                    "label": data.get("title", data.get("paper_id", node_id)),
+                    "paper_id": data.get("paper_id", ""),
+                })
+
+        edges = []
+        for u, v, data in self.graph.edges(data=True):
+            if data.get("relation") == "CITES":
+                edges.append({"source": u, "target": v, "relation": "CITES"})
+
+        return {"nodes": nodes, "edges": edges}
+
+    def get_entity_graph(self) -> dict:
+        """Return full entity graph (all nodes + non-CITES edges)."""
+        nodes = []
+        for node_id, data in self.graph.nodes(data=True):
+            if data.get("kind") == "Paper":
+                nodes.append({
+                    "id": node_id,
+                    "kind": "Paper",
+                    "label": data.get("title", data.get("paper_id", node_id)),
+                    "paper_id": data.get("paper_id", ""),
+                })
+            else:
+                nodes.append({
+                    "id": node_id,
+                    "kind": data.get("kind", "Entity"),
+                    "label": data.get("name", node_id),
+                    "description": data.get("description", ""),
+                })
+
+        edges = []
+        for u, v, data in self.graph.edges(data=True):
+            rel = data.get("relation", "")
+            if rel != "CITES":
+                edges.append({
+                    "source": u,
+                    "target": v,
+                    "relation": rel,
+                })
+
+        return {"nodes": nodes, "edges": edges}
+
     def get_paper_citations(self, paper_id: str, direction: str = "outgoing") -> list[dict]:
         """Get papers cited by / citing this paper."""
         paper_node = f"paper:{paper_id}"

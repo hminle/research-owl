@@ -850,6 +850,47 @@ async def graph_stats():
     return get_graph_stats()
 
 
+@app.get("/graph/citation-graph")
+async def citation_graph():
+    """Get the full citation graph for visualization."""
+    return graph_service.get_citation_graph()
+
+
+@app.get("/graph/entity-graph")
+async def entity_graph():
+    """Get the full entity graph for visualization."""
+    return graph_service.get_entity_graph()
+
+
+@app.get("/embeddings/scatter")
+async def embeddings_scatter(limit: int = 1000):
+    """Get 2D UMAP-reduced embeddings for scatter plot visualization."""
+    from research_owl.umap_reducer import reduce_embeddings
+
+    capped_limit = min(limit, 2000)
+    points = await rag_service.get_all_embeddings(limit=capped_limit)
+
+    if not points:
+        return {"points": []}
+
+    vectors = [p["vector"] for p in points]
+    coords = reduce_embeddings(vectors, n_components=2)
+
+    result = []
+    for pt, (x, y) in zip(points, coords):
+        result.append({
+            "id": pt["id"],
+            "x": round(x, 4),
+            "y": round(y, 4),
+            "paper_id": pt["paper_id"],
+            "paper_title": pt["paper_title"],
+            "chunk_type": pt["chunk_type"],
+            "content_preview": pt["content_preview"],
+        })
+
+    return {"points": result}
+
+
 @app.post("/graph/search")
 async def graph_search(request: ChunkSearchRequest):
     """Hybrid graph+vector search. Uses entity matching to scope vector search."""

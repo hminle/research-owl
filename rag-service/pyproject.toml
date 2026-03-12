@@ -14,6 +14,8 @@ dependencies = [
     "python-dotenv",
     "networkx>=3.0",
     "arxiv>=2.0",
+    "umap-learn>=0.5",
+    "numpy",
 ]
 
 [build-system]

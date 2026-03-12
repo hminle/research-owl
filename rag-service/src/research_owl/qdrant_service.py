@@ -445,6 +445,38 @@ class QdrantRAGService:
 
         return items
 
+    async def get_all_embeddings(self, limit: int = 1000) -> list[dict]:
+        """Scroll all points with vectors for embedding visualization."""
+        all_points: list[dict] = []
+        offset = None
+        batch_size = 100
+
+        while len(all_points) < limit:
+            remaining = min(batch_size, limit - len(all_points))
+            points, next_offset = await self.qdrant.scroll(
+                collection_name=COLLECTION_NAME,
+                limit=remaining,
+                offset=offset,
+                with_payload=True,
+                with_vectors=True,
+            )
+            for point in points:
+                payload = point.payload or {}
+                all_points.append({
+                    "id": str(point.id),
+                    "paper_id": payload.get("paper_id", ""),
+                    "paper_title": payload.get("paper_title", ""),
+                    "chunk_type": payload.get("chunk_type", "text"),
+                    "chunk_index": payload.get("chunk_index", 0),
+                    "content_preview": (payload.get("content", "") or "")[:100],
+                    "vector": point.vector if isinstance(point.vector, list) else [],
+                })
+            if next_offset is None or not points:
+                break
+            offset = next_offset
+
+        return all_points
+
     async def get_collection_stats(self) -> dict:
         """Get collection statistics for the explorer."""
         try:
