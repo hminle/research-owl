@@ -2,6 +2,7 @@ import { gateway } from "@ai-sdk/gateway";
 import { extractReasoningMiddleware, wrapLanguageModel } from "ai";
 
 export const AVAILABLE_MODELS = [
+  { id: "openai/gpt-5.1-thinking", label: "GPT 5.1 (Thinking)" },
   { id: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash" },
   { id: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro" },
   { id: "anthropic/claude-haiku-4.5", label: "Claude Haiku 4.5" },

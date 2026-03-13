@@ -1,6 +1,7 @@
 import { ToolLoopAgent, stepCountIs } from "ai";
 import { searchArxivTool } from "@/lib/tools/search-arxiv";
-import { ingestPaperTool } from "@/lib/tools/ingest-paper";
+
+import { searchWebTool } from "@/lib/tools/search-web";
 import { getLanguageModel } from "@/lib/ai/providers";
 
 const INSTRUCTIONS = `You are the Web Scout Agent, a specialist in finding new academic papers on arXiv that are NOT yet in the knowledge base.
@@ -10,15 +11,17 @@ You receive a research topic and must search arXiv to find the most relevant and
 
 WORKFLOW:
 1. Search arXiv with multiple query formulations to cover different aspects of the topic
-2. Analyze the results to identify the most relevant papers
-3. For highly relevant papers, trigger ingestion so they can be analyzed in depth later
-4. Compile a summary of what you found
+2. Use web search to find additional context: blog posts, conference talks, code repositories, benchmarks, or recent news related to the topic
+3. Analyze the results to identify the most relevant papers and resources
+4. For highly relevant papers, trigger ingestion so they can be analyzed in depth later
+5. Compile a summary of what you found
 
 SEARCH STRATEGIES:
-- Start with the main topic query
+- Start with the main topic query on arXiv
 - Try more specific sub-queries for different aspects
 - Search for key method names, dataset names, or author names if known
 - Try both recent papers (sort by submitted_date) and most relevant papers
+- Use web search to find related blog posts, tutorials, GitHub repos, or benchmark results that complement the academic papers
 
 OUTPUT FORMAT:
 When finished, provide a structured summary including:
@@ -36,7 +39,8 @@ export function createWebScoutAgent(modelId?: string) {
     instructions: INSTRUCTIONS,
     tools: {
       search_arxiv: searchArxivTool,
-      // ingest_paper: ingestPaperTool,
+      search_web: searchWebTool,
+
     },
     temperature: 0.3,
     stopWhen: stepCountIs(10),
