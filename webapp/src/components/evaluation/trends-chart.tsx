@@ -30,8 +30,8 @@ interface EvalStats {
     run_id: string;
     dataset_id: string;
     completed_at: string;
-    correctness: number | null;
     factual_correctness: number | null;
+    context_relevance: number | null;
   }[];
 }
 
@@ -74,8 +74,8 @@ export function TrendsChart() {
   const chartData = (stats?.trends ?? []).map((t) => ({
     date: new Date(t.completed_at).toLocaleDateString(),
     run_id: t.run_id.slice(0, 8),
-    correctness: t.correctness != null ? Math.round(t.correctness * 100) : null,
     factual_correctness: t.factual_correctness != null ? Math.round(t.factual_correctness * 100) : null,
+    context_relevance: t.context_relevance != null ? Math.round(t.context_relevance * 100) : null,
   }));
 
   return (
@@ -101,7 +101,7 @@ export function TrendsChart() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-medium">Correctness Over Time</h3>
+            <h3 className="text-sm font-medium">Metrics Over Time</h3>
           </div>
           <Select value={filterDataset} onValueChange={setFilterDataset}>
             <SelectTrigger className="w-[180px]" size="sm">
@@ -151,8 +151,8 @@ export function TrendsChart() {
               />
               <Line
                 type="monotone"
-                dataKey="correctness"
-                name="Correctness"
+                dataKey="factual_correctness"
+                name="Factual Correctness"
                 stroke="#10b981"
                 strokeWidth={2}
                 dot={{ r: 3 }}
@@ -160,8 +160,8 @@ export function TrendsChart() {
               />
               <Line
                 type="monotone"
-                dataKey="factual_correctness"
-                name="Factual Correctness"
+                dataKey="context_relevance"
+                name="Context Relevance"
                 stroke="#3b82f6"
                 strokeWidth={2}
                 dot={{ r: 3 }}

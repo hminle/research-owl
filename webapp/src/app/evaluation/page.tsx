@@ -10,7 +10,6 @@ import { RunProgress } from "@/components/evaluation/run-progress";
 import { RunHistory } from "@/components/evaluation/run-history";
 import { RunResultsTable } from "@/components/evaluation/run-results-table";
 import { TrendsChart } from "@/components/evaluation/trends-chart";
-import { MethodologyCard } from "@/components/evaluation/methodology-card";
 import { useQueryClient } from "@tanstack/react-query";
 
 type Tab = "datasets" | "runs" | "trends";
@@ -49,8 +48,6 @@ export default function EvaluationPage() {
           over time.
         </p>
       </div>
-
-      <MethodologyCard />
 
       {/* Tab navigation */}
       <div className="flex gap-1 rounded-lg border p-1 w-fit bg-muted/30">

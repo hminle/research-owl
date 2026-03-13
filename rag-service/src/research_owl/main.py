@@ -698,7 +698,6 @@ async def start_eval_run(request: EvalRunRequest, background_tasks: BackgroundTa
 
     run = create_eval_run(
         dataset_id=request.dataset_id,
-        query_mode=request.query_mode,
         num_items=len(ds.items),
     )
 
@@ -708,13 +707,12 @@ async def start_eval_run(request: EvalRunRequest, background_tasks: BackgroundTa
         _async_run_evaluation,
         run.run_id,
         [item.model_dump() for item in ds.items],
-        request.query_mode,
     )
 
     return run
 
 
-async def _async_run_evaluation(run_id: str, items: list[dict], query_mode: str) -> None:
+async def _async_run_evaluation(run_id: str, items: list[dict]) -> None:
     from research_owl.evaluation.evaluator import run_evaluation
 
     update_eval_run(
@@ -736,15 +734,14 @@ async def _async_run_evaluation(run_id: str, items: list[dict], query_mode: str)
             items=items,
             query_func=rag_service.query,
             retrieve_func=rag_service.retrieve_contexts,
-            query_mode=query_mode,
             progress_callback=progress_cb,
         )
 
         update_eval_run(
             run_id,
             status=EvalRunStatus.completed.value,
-            correctness=result.correctness,
             factual_correctness=result.factual_correctness,
+            context_relevance=result.context_relevance,
             item_results=result.item_results or [],
         )
         conn = _get_conn()

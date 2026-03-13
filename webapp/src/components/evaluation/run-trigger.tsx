@@ -23,13 +23,8 @@ interface RunTriggerProps {
   onRunStarted?: (runId: string) => void;
 }
 
-const QUERY_MODES = [
-  { value: "semantic", label: "Semantic Search" },
-];
-
 export function RunTrigger({ onRunStarted }: RunTriggerProps) {
   const [datasetId, setDatasetId] = useState("");
-  const [queryMode, setQueryMode] = useState("semantic");
   const queryClient = useQueryClient();
 
   const { data: datasets = [] } = useQuery<EvalDataset[]>({
@@ -45,7 +40,7 @@ export function RunTrigger({ onRunStarted }: RunTriggerProps) {
       const res = await apiFetch("/api/rag/eval/runs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dataset_id: datasetId, query_mode: queryMode }),
+        body: JSON.stringify({ dataset_id: datasetId }),
       });
       return res.json();
     },
@@ -73,22 +68,6 @@ export function RunTrigger({ onRunStarted }: RunTriggerProps) {
               {datasets.map((ds) => (
                 <SelectItem key={ds.dataset_id} value={ds.dataset_id}>
                   {ds.name} ({ds.num_items} items)
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-1 w-[180px]">
-          <label className="text-xs text-muted-foreground">Query Mode</label>
-          <Select value={queryMode} onValueChange={setQueryMode}>
-            <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {QUERY_MODES.map((m) => (
-                <SelectItem key={m.value} value={m.value}>
-                  {m.label}
                 </SelectItem>
               ))}
             </SelectContent>

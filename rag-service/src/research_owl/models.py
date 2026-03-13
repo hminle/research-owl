@@ -176,7 +176,6 @@ class EvalDatasetDetail(EvalDataset):
 
 class EvalRunRequest(BaseModel):
     dataset_id: str
-    query_mode: str = "semantic"
 
 
 class EvalItemResult(BaseModel):
@@ -185,18 +184,18 @@ class EvalItemResult(BaseModel):
     ground_truth: str
     answer: str = ""
     contexts: list[str] = []
-    correctness_score: str | None = None
-    correctness_reason: str | None = None
     factual_correctness: float | None = None
+    factual_correctness_reason: str | None = None
+    context_relevance: float | None = None
+    context_relevance_reason: str | None = None
 
 
 class EvalRun(BaseModel):
     run_id: str
     dataset_id: str
     status: EvalRunStatus = EvalRunStatus.pending
-    query_mode: str = "semantic"
-    correctness: float | None = None
     factual_correctness: float | None = None
+    context_relevance: float | None = None
     num_items: int = 0
     error_message: str | None = None
     started_at: str | None = None
@@ -212,8 +211,8 @@ class EvalTrendPoint(BaseModel):
     run_id: str
     dataset_id: str
     completed_at: str
-    correctness: float | None = None
     factual_correctness: float | None = None
+    context_relevance: float | None = None
 
 
 class EvalStats(BaseModel):

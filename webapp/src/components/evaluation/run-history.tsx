@@ -8,7 +8,6 @@ import {
   XCircle,
   AlertCircle,
 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { MetricBadge } from "./metric-badge";
 import { apiFetch } from "@/lib/api";
 
@@ -16,9 +15,8 @@ interface EvalRun {
   run_id: string;
   dataset_id: string;
   status: string;
-  query_mode: string;
-  correctness: number | null;
   factual_correctness: number | null;
+  context_relevance: number | null;
   num_items: number;
   error_message: string | null;
   started_at: string | null;
@@ -109,9 +107,6 @@ export function RunHistory({ onSelectRun, selectedRunId }: RunHistoryProps) {
               <span className="text-sm font-medium">
                 {datasetMap[run.dataset_id] || run.dataset_id}
               </span>
-              <Badge variant="outline" className="text-[10px]">
-                {run.query_mode}
-              </Badge>
             </div>
             <span className="text-xs text-muted-foreground tabular-nums">
               {run.num_items} items
@@ -120,8 +115,8 @@ export function RunHistory({ onSelectRun, selectedRunId }: RunHistoryProps) {
 
           {run.status === "completed" && (
             <div className="flex flex-wrap gap-1.5">
-              <MetricBadge label="Correctness" value={run.correctness} />
               <MetricBadge label="Factual" value={run.factual_correctness} />
+              <MetricBadge label="Context" value={run.context_relevance} />
             </div>
           )}
 

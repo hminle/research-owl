@@ -69,9 +69,8 @@ CREATE TABLE IF NOT EXISTS eval_runs (
     run_id              TEXT PRIMARY KEY,
     dataset_id          TEXT NOT NULL REFERENCES eval_datasets(dataset_id),
     status              TEXT NOT NULL DEFAULT 'pending',
-    query_mode          TEXT NOT NULL DEFAULT 'mix',
-    correctness         REAL,
     factual_correctness REAL,
+    context_relevance   REAL,
     num_items           INTEGER NOT NULL DEFAULT 0,
     error_message       TEXT,
     item_results        TEXT NOT NULL DEFAULT '[]',
@@ -135,6 +134,11 @@ def init_db(db_path: Path) -> None:
     _conn.execute(_CREATE_CITATIONS_TABLE)
     _conn.execute(_CREATE_ENTITIES_TABLE)
     _conn.execute(_CREATE_PAPER_ENTITIES_TABLE)
+    # Migrate: add context_relevance column if missing (from older schema)
+    try:
+        _conn.execute("ALTER TABLE eval_runs ADD COLUMN context_relevance REAL")
+    except Exception:
+        pass  # column already exists
     _conn.commit()
 
 
@@ -376,15 +380,19 @@ def delete_eval_item(item_id: int) -> bool:
 
 
 def _row_to_run(row: sqlite3.Row) -> EvalRun:
-    return EvalRun(**dict(row))
+    d = dict(row)
+    # Filter to only known model fields (handles old DB columns like query_mode, correctness)
+    known = set(EvalRun.model_fields.keys())
+    d = {k: v for k, v in d.items() if k in known}
+    return EvalRun(**d)
 
 
-def create_eval_run(dataset_id: str, query_mode: str = "mix", num_items: int = 0) -> EvalRun:
+def create_eval_run(dataset_id: str, num_items: int = 0) -> EvalRun:
     conn = _get_conn()
     run_id = uuid.uuid4().hex[:12]
     conn.execute(
-        "INSERT INTO eval_runs (run_id, dataset_id, query_mode, num_items) VALUES (?, ?, ?, ?)",
-        (run_id, dataset_id, query_mode, num_items),
+        "INSERT INTO eval_runs (run_id, dataset_id, num_items) VALUES (?, ?, ?)",
+        (run_id, dataset_id, num_items),
     )
     conn.commit()
     return get_eval_run(run_id)  # type: ignore[return-value]
@@ -406,6 +414,9 @@ def get_eval_run_detail(run_id: str) -> EvalRunDetail | None:
     d = dict(row)
     item_results_raw = json.loads(d.pop("item_results", "[]"))
     item_results = [EvalItemResult(**ir) for ir in item_results_raw]
+    # Filter to only known model fields (handles old DB columns)
+    known = set(EvalRunDetail.model_fields.keys())
+    d = {k: v for k, v in d.items() if k in known}
     return EvalRunDetail(**d, item_results=item_results)
 
 
@@ -436,13 +447,13 @@ def get_eval_trends(dataset_id: str | None = None) -> list[EvalTrendPoint]:
     conn = _get_conn()
     if dataset_id:
         rows = conn.execute(
-            "SELECT run_id, dataset_id, completed_at, correctness, factual_correctness "
+            "SELECT run_id, dataset_id, completed_at, factual_correctness, context_relevance "
             "FROM eval_runs WHERE status = 'completed' AND dataset_id = ? ORDER BY completed_at ASC",
             (dataset_id,),
         ).fetchall()
     else:
         rows = conn.execute(
-            "SELECT run_id, dataset_id, completed_at, correctness, factual_correctness "
+            "SELECT run_id, dataset_id, completed_at, factual_correctness, context_relevance "
             "FROM eval_runs WHERE status = 'completed' ORDER BY completed_at ASC",
         ).fetchall()
     return [EvalTrendPoint(**dict(r)) for r in rows]
