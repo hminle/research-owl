@@ -88,7 +88,7 @@ const slide1: PresentationSlide = {
   id: "intro",
   title: "What is Research Owl?",
   description:
-    "An AI research assistant that reads academic papers and answers your questions about them.",
+    "An AI research assistant that reads academic papers, answers your questions, and conducts deep research with multiple specialized AI agents.",
   type: "cards",
   cards: [
     {
@@ -109,14 +109,83 @@ const slide1: PresentationSlide = {
       description: "Ask questions and get cited, accurate answers",
       color: "blue",
     },
+    {
+      icon: "Search",
+      title: "Research",
+      description: "AI agents collaborate to produce deep research reports",
+      color: "emerald",
+    },
   ],
 };
 
 // ═══════════════════════════════════════════════════════════════
-// SLIDE 2: The Big Picture (flow — 3 nodes)
+// SLIDE 2: Who Uses Research Owl? (cards)
 // ═══════════════════════════════════════════════════════════════
 
 const slide2: PresentationSlide = {
+  id: "who-uses",
+  title: "Who Uses Research Owl?",
+  description:
+    "Built for anyone who works with academic papers and needs to stay on top of the literature.",
+  type: "cards",
+  cards: [
+    {
+      icon: "GraduationCap",
+      title: "PhD Students",
+      description: "Quickly survey a new field, find related work, and identify research gaps for their thesis",
+      color: "blue",
+    },
+    {
+      icon: "Microscope",
+      title: "Researchers",
+      description: "Keep up with the latest papers, cross-reference findings, and plan new experiments",
+      color: "violet",
+    },
+    {
+      icon: "Users",
+      title: "Research Teams",
+      description: "Build a shared knowledge base of papers the team has read and query it together",
+      color: "emerald",
+    },
+    {
+      icon: "Lightbulb",
+      title: "ML Engineers",
+      description: "Find SOTA baselines, compare methods, and discover which datasets to benchmark on",
+      color: "amber",
+    },
+  ],
+};
+
+// ═══════════════════════════════════════════════════════════════
+// SLIDE 3: Use Cases (flow — multi-path from center)
+// ═══════════════════════════════════════════════════════════════
+
+const slide3: PresentationSlide = {
+  id: "use-cases",
+  title: "What Can You Do With It?",
+  description:
+    "From quick Q&A to deep multi-agent research — here are the key ways people use Research Owl.",
+  type: "flow",
+  nodes: [
+    pn("uc-center",  0,   160, "Research Owl",      "",                                     "violet", "Brain"),
+    pn("uc-review",  400, 0,   "Literature Review",  "Survey a topic across all your papers", "blue",   "BookOpen"),
+    pn("uc-qa",      400, 120, "Paper Q&A",          "Ask questions about specific papers",   "emerald","MessageSquare"),
+    pn("uc-plan",    400, 240, "Experiment Planning", "Get baselines, datasets, and metrics",  "rose",   "FlaskConical"),
+    pn("uc-explore", 400, 360, "Explore Connections", "Discover how papers and concepts link", "orange", "Share2"),
+  ],
+  edges: [
+    peCustom("uc-1", "uc-center", "uc-review",  "source-right", "target-left"),
+    peCustom("uc-2", "uc-center", "uc-qa",      "source-right", "target-left"),
+    peCustom("uc-3", "uc-center", "uc-plan",    "source-right", "target-left"),
+    peCustom("uc-4", "uc-center", "uc-explore", "source-right", "target-left"),
+  ],
+};
+
+// ═══════════════════════════════════════════════════════════════
+// SLIDE 4: The Big Picture (flow — 3 nodes)
+// ═══════════════════════════════════════════════════════════════
+
+const slide4: PresentationSlide = {
   id: "big-picture",
   title: "The Big Picture",
   description:
@@ -124,8 +193,8 @@ const slide2: PresentationSlide = {
   type: "flow",
   nodes: [
     pn("app", 0, 100, "Web App", "What you see and use", "blue", "Monitor"),
-    pn("brain", 400, 100, "AI Agent", "Reads, reasons, and answers", "violet", "Brain"),
-    pn("store", 800, 100, "Knowledge Store", "Remembers everything", "emerald", "Database"),
+    pn("brain", 500, 100, "AI Agent", "Reads, reasons, and answers", "violet", "Brain"),
+    pn("store", 1000, 100, "Knowledge Store", "Remembers everything", "emerald", "Database"),
   ],
   edges: [
     pe("bp-1", "app", "brain", "asks questions"),
@@ -134,10 +203,10 @@ const slide2: PresentationSlide = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// SLIDE 3: How Papers Get In (flow — 4 steps)
+// SLIDE 5: How Papers Get In (flow — 4 steps)
 // ═══════════════════════════════════════════════════════════════
 
-const slide3: PresentationSlide = {
+const slide5: PresentationSlide = {
   id: "ingestion",
   title: "How Papers Get In",
   description:
@@ -157,10 +226,10 @@ const slide3: PresentationSlide = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// SLIDE 4: How It Understands Papers (flow — concepts + map)
+// SLIDE 6: How It Understands Papers (flow — concepts + map)
 // ═══════════════════════════════════════════════════════════════
 
-const slide4: PresentationSlide = {
+const slide6: PresentationSlide = {
   id: "understanding",
   title: "How It Understands Papers",
   description:
@@ -181,10 +250,10 @@ const slide4: PresentationSlide = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// SLIDE 5: How It Answers Questions (flow — 3 steps)
+// SLIDE 7: How It Answers Questions (flow — 3 steps)
 // ═══════════════════════════════════════════════════════════════
 
-const slide5: PresentationSlide = {
+const slide7: PresentationSlide = {
   id: "answering",
   title: "How It Answers Questions",
   description:
@@ -202,10 +271,10 @@ const slide5: PresentationSlide = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// SLIDE 6: Smart Search (flow — two-lane merge)
+// SLIDE 8: Smart Search (flow — two-lane merge)
 // ═══════════════════════════════════════════════════════════════
 
-const slide6: PresentationSlide = {
+const slide8: PresentationSlide = {
   id: "smart-search",
   title: "Smart Search",
   description:
@@ -228,10 +297,37 @@ const slide6: PresentationSlide = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// SLIDE 7: Quality Assurance (flow — loop)
+// SLIDE 9: Deep Research (flow — multi-agent)
 // ═══════════════════════════════════════════════════════════════
 
-const slide7: PresentationSlide = {
+const slide9: PresentationSlide = {
+  id: "research",
+  title: "Deep Research Mode",
+  description:
+    "A director agent coordinates four specialized AI agents that work together — reviewing your papers, searching the web, planning experiments, and writing a full research report.",
+  type: "flow",
+  nodes: [
+    pn("query", 0, 160, "Research Topic", "You describe what to investigate", "gray", "MessageSquare"),
+    pn("director", 450, 160, "Director Agent", "Coordinates the whole process", "violet", "BrainCircuit"),
+    pn("kb", 900, 0, "KB Reviewer", "Searches your ingested papers", "blue", "BookOpen"),
+    pn("web", 900, 130, "Web Scout", "Finds new papers on arXiv", "emerald", "Globe"),
+    pn("planner", 900, 260, "Research Planner", "Designs experiments", "rose", "FlaskConical"),
+    pn("synth", 900, 390, "Synthesizer", "Writes the final report", "amber", "FileText"),
+  ],
+  edges: [
+    pe("res-1", "query", "director"),
+    peCustom("res-2", "director", "kb", "source-top", "target-left", "① review KB"),
+    peCustom("res-3", "director", "web", "source-right", "target-left", "② search web"),
+    peCustom("res-4", "director", "planner", "source-right", "target-left", "③ plan"),
+    peCustom("res-5", "director", "synth", "source-bottom", "target-left", "④ synthesize"),
+  ],
+};
+
+// ═══════════════════════════════════════════════════════════════
+// SLIDE 10: Quality Assurance (flow — loop)
+// ═══════════════════════════════════════════════════════════════
+
+const slide10: PresentationSlide = {
   id: "evaluation",
   title: "Quality Assurance",
   description:
@@ -239,8 +335,8 @@ const slide7: PresentationSlide = {
   type: "flow",
   nodes: [
     pn("gen", 0, 100, "Generate Questions", "Creates test Q&A from papers", "blue", "ListChecks"),
-    pn("answer", 380, 100, "System Answers", "The AI tries to answer each one", "amber", "MessageSquare"),
-    pn("judge", 760, 100, "AI Grades Results", "Scores accuracy and correctness", "violet", "Award"),
+    pn("answer", 480, 100, "System Answers", "The AI tries to answer each one", "amber", "MessageSquare"),
+    pn("judge", 960, 100, "AI Grades Results", "Scores accuracy and correctness", "violet", "Award"),
   ],
   edges: [
     pe("ev-1", "gen", "answer", "test questions"),
@@ -249,10 +345,10 @@ const slide7: PresentationSlide = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// SLIDE 8: Under the Hood (cards — tech stack)
+// SLIDE 11: Under the Hood (cards — tech stack)
 // ═══════════════════════════════════════════════════════════════
 
-const slide8: PresentationSlide = {
+const slide11: PresentationSlide = {
   id: "tech-stack",
   title: "Under the Hood",
   description:
@@ -287,6 +383,44 @@ const slide8: PresentationSlide = {
 };
 
 // ═══════════════════════════════════════════════════════════════
+// SLIDE 12: What's Next (cards — future enhancements)
+// ═══════════════════════════════════════════════════════════════
+
+const slide12: PresentationSlide = {
+  id: "whats-next",
+  title: "What's Next?",
+  description:
+    "Planned improvements and future directions for Research Owl.",
+  type: "cards",
+  cards: [
+    {
+      icon: "Puzzle",
+      title: "Citation Chain Ingestion",
+      description: "Automatically ingest referenced papers to build a deeper and interconnected knowledge base",
+      color: "blue",
+    },
+    {
+      icon: "Users",
+      title: "Multi-User Collaboration",
+      description: "Shared workspaces where teams can annotate, discuss, and query papers together",
+      color: "emerald",
+    },
+    {
+      icon: "Zap",
+      title: "Fine-Tuned Embeddings",
+      description: "Domain-specific embedding models trained on academic text for more accurate retrieval",
+      color: "violet",
+    },
+    {
+      icon: "Rocket",
+      title: "Research Writing Assistant",
+      description: "Draft paper sections with proper citations pulled directly from your knowledge base",
+      color: "amber",
+    },
+  ],
+};
+
+// ═══════════════════════════════════════════════════════════════
 // EXPORT
 // ═══════════════════════════════════════════════════════════════
 
@@ -299,4 +433,8 @@ export const slides: PresentationSlide[] = [
   slide6,
   slide7,
   slide8,
+  slide9,
+  slide10,
+  slide11,
+  slide12,
 ];

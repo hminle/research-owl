@@ -14,6 +14,19 @@ import {
   MessageSquare,
   Monitor,
   Server,
+  BrainCircuit,
+  BookOpen,
+  Globe,
+  FlaskConical,
+  Search,
+  GraduationCap,
+  Microscope,
+  Users,
+  Lightbulb,
+  Rocket,
+  Puzzle,
+  RefreshCw,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import { presentationNodeTypes } from "./presentation-nodes";
@@ -27,6 +40,19 @@ const cardIconMap: Record<string, LucideIcon> = {
   MessageSquare,
   Monitor,
   Server,
+  BrainCircuit,
+  BookOpen,
+  Globe,
+  FlaskConical,
+  Search,
+  GraduationCap,
+  Microscope,
+  Users,
+  Lightbulb,
+  Rocket,
+  Puzzle,
+  RefreshCw,
+  Zap,
 };
 
 const cardColorMap: Record<string, { bg: string; border: string; text: string; accent: string }> = {
@@ -68,7 +94,7 @@ function SlideCard({ card }: { card: CardData }) {
 
 function CardsView({ cards }: { cards: CardData[] }) {
   return (
-    <div className="flex items-center justify-center gap-8 flex-wrap h-full">
+    <div className="flex items-stretch justify-center gap-8 flex-wrap h-full content-center">
       {cards.map((card, i) => (
         <SlideCard key={i} card={card} />
       ))}

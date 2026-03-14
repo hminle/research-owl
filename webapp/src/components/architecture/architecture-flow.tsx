@@ -21,8 +21,8 @@ import {
   Network,
   ArrowRightLeft,
   MessageSquareText,
-  Database,
   FlaskConical,
+  BrainCircuit,
 } from "lucide-react";
 
 import { nodeTypes } from "./architecture-nodes";
@@ -32,8 +32,8 @@ import { views, componentDetails } from "./architecture-data";
 const VIEW_TABS = [
   { id: "overview",    label: "System Overview",    icon: Network },
   { id: "ingestion",   label: "Ingestion Pipeline", icon: ArrowRightLeft },
-  { id: "query",       label: "Query & Chat",       icon: MessageSquareText },
-  { id: "data-model",  label: "Data Model",         icon: Database },
+  { id: "chat",       label: "Chat",               icon: MessageSquareText },
+  { id: "research",   label: "Research",           icon: BrainCircuit },
   { id: "evaluation",  label: "Evaluation",         icon: FlaskConical },
 ] as const;
 

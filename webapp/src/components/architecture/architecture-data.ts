@@ -72,33 +72,20 @@ function e(
 // ═══════════════════════════════════════════════════════════════
 
 const overviewNodes: Node[] = [
-  n("user",        "archUser",     80,  60,  "User / Browser",       "",                          "gray"),
-  n("webapp",      "archService",  340, 60,  "Next.js Webapp",       "Port 3000",                 "blue"),
-  n("agent",       "archModule",   340, 440, "AI Agent",             "ToolLoopAgent",             "violet"),
-  n("rag-service", "archService",  660, 60,  "RAG Service",          "FastAPI · Port 8000",       "emerald"),
-  n("ingestion",   "archModule",   660, 250, "Ingestion Pipeline",   "PDF → Chunks → Embed",     "amber"),
-  n("retrieval",   "archModule",   660, 440, "Hybrid Retriever",     "Graph + Vector + RRF",      "rose"),
-  n("qdrant",      "archStorage",  980, 60,  "Qdrant",               "Vector DB · Port 6333",     "sky"),
-  n("sqlite",      "archStorage",  980, 250, "SQLite",               "papers.db",                 "slate"),
-  n("graph",       "archStorage",  980, 440, "Knowledge Graph",      "NetworkX · In-memory",      "orange"),
-  n("external",    "archExternal", 660, 610, "External APIs",        "OpenAI · Arxiv · AI Gateway","gray"),
+  n("user",        "archUser",     80,  200, "User / Browser",       "",                          "gray"),
+  n("webapp",      "archService",  340, 200, "Next.js Webapp",       "Port 3000",                 "blue"),
+  n("rag-service", "archService",  620, 200, "RAG Service",          "FastAPI · Port 8000",       "emerald"),
+  n("qdrant",      "archStorage",  920, 60,  "Qdrant",               "Vector DB · Port 6333",     "sky"),
+  n("sqlite",      "archStorage",  920, 220, "SQLite",               "papers.db",                 "slate"),
+  n("graph",       "archStorage",  920, 380, "Knowledge Graph",      "NetworkX · In-memory",      "orange"),
 ];
 
 const overviewEdges: Edge[] = [
   e("o-user-webapp",   "user",       "webapp",      "HTTP",              "source-right", "target-left"),
   e("o-webapp-rag",    "webapp",     "rag-service", "API Proxy",         "source-right", "target-left"),
-  e("o-rag-qdrant",    "rag-service","qdrant",      "",                  "source-right", "target-left"),
-  e("o-ingest-sqlite", "ingestion",  "sqlite",      "Metadata",          "source-right", "target-left"),
-  e("o-ret-graph",     "retrieval",  "graph",       "Traverse",          "source-right", "target-left"),
-  e("o-webapp-agent",  "webapp",     "agent",       "Chat API",          "source-bottom","target-top"),
-  e("o-rag-ingest",    "rag-service","ingestion",   "Ingest",            "source-bottom","target-top"),
-  e("o-rag-ret",       "rag-service","retrieval",   "Search",            "source-left",  "target-left"),
-  e("o-ingest-qdrant", "ingestion",  "qdrant",      "Store Vectors",     "source-top",   "target-bottom"),
-  e("o-ingest-graph",  "ingestion",  "graph",       "Entities",          "source-bottom","target-top"),
-  e("o-ret-qdrant",    "retrieval",  "qdrant",      "Vector Search",     "source-right", "target-bottom"),
-  e("o-agent-rag",     "agent",      "rag-service", "Tool Calls",        "source-right", "target-bottom"),
-  e("o-agent-ext",     "agent",      "external",    "LLM Calls",         "source-bottom","target-left",  { dashed: true }),
-  e("o-ingest-ext",    "ingestion",  "external",    "PDF · Embed · Vision","source-bottom","target-top", { dashed: true }),
+  e("o-rag-qdrant",    "rag-service","qdrant",      "Vectors",           "source-right", "target-left"),
+  e("o-rag-sqlite",    "rag-service","sqlite",      "Metadata",          "source-right", "target-left"),
+  e("o-rag-graph",     "rag-service","graph",       "Traverse",          "source-right", "target-left"),
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -147,64 +134,47 @@ const ingestionEdges: Edge[] = [
 ];
 
 // ═══════════════════════════════════════════════════════════════
-// VIEW 3: QUERY & CHAT FLOW
+// VIEW 3: CHAT – User ↔ AI Agent ↔ Tools ↔ Storage
 // ═══════════════════════════════════════════════════════════════
 
-const queryNodes: Node[] = [
-  n("q-user",   "archUser",     60,  200, "User Message",     "Chat page input",                     "gray"),
-  n("q-agent",  "archService",  300, 200, "ToolLoopAgent",    "Max 6 steps · temp 0.5",              "violet"),
-  n("q-llm",    "archExternal", 300, 30,  "LLM",             "Gemini 2.5 Flash / Claude",            "violet"),
-  n("q-list",   "archModule",   580, 60,  "list_papers",     "GET /papers → paper list",             "blue"),
-  n("q-hybrid", "archModule",   580, 220, "hybrid_search",   "Graph + Vector + RRF",                 "rose"),
-  n("q-show",   "archModule",   580, 380, "show_image",      "Display figure/table in chat",         "blue"),
-  n("q-qdrant", "archStorage",  860, 140, "Qdrant",          "Vector similarity search",             "sky"),
-  n("q-sqlite", "archStorage",  860, 60,  "SQLite",          "Paper list + entity matching",         "slate"),
-  n("q-graph",  "archStorage",  860, 300, "Knowledge Graph", "Entity → paper traversal",             "orange"),
+const chatNodes: Node[] = [
+  // Row 1: User + LLM
+  n("q-user",   "archUser",     340, 20,  "User",             "Chat page input",                     "gray"),
+  n("q-llm",    "archExternal", 640, 20,  "LLM",             "Gemini 2.5 Flash / Claude",            "violet"),
+  // Row 2: AI Agent (ToolLoopAgent)
+  n("q-agent",  "archService",  310, 170, "Chat Agent",       "ToolLoopAgent · max 6 steps · temp 0.5","violet"),
+  // Row 3: Tools (below agent)
+  n("q-list",   "archModule",   60,  370, "list_papers",     "GET /papers → paper list",             "blue"),
+  n("q-hybrid", "archModule",   330, 370, "hybrid_search",   "Graph + Vector + RRF",                 "rose"),
+  n("q-show",   "archModule",   620, 370, "show_image",      "Display figure/table in chat",         "blue"),
+  // Row 4: Storage backends
+  n("q-sqlite", "archStorage",  60,  560, "SQLite",          "Paper list + entity matching",         "slate"),
+  n("q-qdrant", "archStorage",  340, 560, "Qdrant",          "Vector similarity search",             "sky"),
+  n("q-graph",  "archStorage",  620, 560, "Knowledge Graph", "Entity → paper traversal",             "orange"),
 ];
 
-const queryEdges: Edge[] = [
-  e("q-1", "q-user",   "q-agent",  "message",        "source-right", "target-left"),
-  e("q-2", "q-agent",  "q-llm",    "reason",         "source-top",   "target-bottom"),
-  e("q-3", "q-agent",  "q-list",   "",               "source-right", "target-left"),
-  e("q-5", "q-agent",  "q-hybrid", "",               "source-right", "target-left"),
-  e("q-5b","q-agent",  "q-show",   "",               "source-bottom","target-left"),
-  e("q-6", "q-list",   "q-sqlite", "",               "source-right", "target-left"),
-  e("q-8", "q-hybrid", "q-graph",  "traverse",       "source-right", "target-left"),
-  e("q-9", "q-hybrid", "q-qdrant", "scoped + global","source-right", "target-left"),
-  e("q-a", "q-hybrid", "q-sqlite", "entity match",   "source-right", "target-left"),
+const chatEdges: Edge[] = [
+  // User → Agent
+  e("q-1", "q-user",   "q-agent",  "message",        "source-bottom", "target-top"),
+  // Agent ↔ LLM
+  e("q-2", "q-agent",  "q-llm",    "reason + decide","source-right",  "target-bottom"),
+  // Agent → Tools (tool calls)
+  e("q-3", "q-agent",  "q-list",   "tool call",      "source-bottom", "target-top"),
+  e("q-4", "q-agent",  "q-hybrid", "tool call",      "source-bottom", "target-top"),
+  e("q-5", "q-agent",  "q-show",   "tool call",      "source-bottom", "target-top"),
+  // Tools → Storage
+  e("q-6", "q-list",   "q-sqlite", "GET /papers",    "source-bottom", "target-top"),
+  e("q-7", "q-hybrid", "q-sqlite", "entity match",   "source-bottom", "target-top"),
+  e("q-8", "q-hybrid", "q-qdrant", "scoped + global","source-bottom", "target-top"),
+  e("q-9", "q-hybrid", "q-graph",  "traverse",       "source-bottom", "target-top",  { dashed: true }),
 ];
 
 // ═══════════════════════════════════════════════════════════════
 // VIEW 4: DATA MODEL
 // ═══════════════════════════════════════════════════════════════
 
-const dataModelNodes: Node[] = [
-  n("d-papers",     "archStorage", 80,  80,  "papers",          "paper_id · title · status · num_chunks",    "slate"),
-  n("d-images",     "archStorage", 380, 30,  "images",          "paper_id · filename · caption",             "slate"),
-  n("d-citations",  "archStorage", 380, 180, "citations",       "citing_id · cited_id (composite PK)",       "slate"),
-  n("d-paper-ent",  "archStorage", 380, 330, "paper_entities",  "paper_id · entity_id · relation · context", "slate"),
-  n("d-entities",   "archStorage", 680, 330, "entities",        "type · name · normalized_name · description","slate"),
-  n("d-eval-ds",    "archStorage", 680, 30,  "eval_datasets",   "name · description · paper_ids · num_items","emerald"),
-  n("d-eval-items", "archStorage", 960, 30,  "eval_items",      "question · ground_truth · metadata",        "emerald"),
-  n("d-eval-runs",  "archStorage", 960, 180, "eval_runs",       "status · correctness · factual · results",  "emerald"),
-  n("d-qdrant",     "archStorage", 80,  510, "Qdrant: research_owl", "1536d · COSINE · paper_id · content · chunk_type","sky"),
-  n("d-networkx",   "archStorage", 480, 510, "NetworkX DiGraph","Paper nodes · Entity nodes · Typed edges",  "orange"),
-];
-
-const dataModelEdges: Edge[] = [
-  e("d-1", "d-papers",    "d-images",    "1 : N",       "source-right", "target-left"),
-  e("d-2", "d-papers",    "d-citations", "citing_id",   "source-right", "target-left"),
-  e("d-3", "d-papers",    "d-paper-ent", "paper_id",    "source-bottom","target-left"),
-  e("d-4", "d-paper-ent", "d-entities",  "entity_id",   "source-right", "target-left"),
-  e("d-5", "d-eval-ds",   "d-eval-items","1 : N (CASCADE)","source-right","target-left"),
-  e("d-6", "d-eval-ds",   "d-eval-runs", "dataset_id",  "source-right", "target-top"),
-  e("d-7", "d-papers",    "d-qdrant",    "chunk vectors","source-bottom","target-top"),
-  e("d-8", "d-papers",    "d-networkx",  "paper nodes",  "source-bottom","target-top", { dashed: true }),
-  e("d-9", "d-entities",  "d-networkx",  "entity nodes", "source-bottom","target-top", { dashed: true }),
-];
-
 // ═══════════════════════════════════════════════════════════════
-// VIEW 5: EVALUATION FLOW
+// VIEW 4: EVALUATION FLOW
 // ═══════════════════════════════════════════════════════════════
 
 const evalNodes: Node[] = [
@@ -227,6 +197,64 @@ const evalEdges: Edge[] = [
 ];
 
 // ═══════════════════════════════════════════════════════════════
+// VIEW 5: RESEARCH MULTI-AGENT SYSTEM
+// ═══════════════════════════════════════════════════════════════
+
+const researchNodes: Node[] = [
+  // Row 1: User + LLM
+  n("r-user",       "archUser",     340, 20,  "User",                "Research page input",                     "gray"),
+  n("r-llm",        "archExternal", 700, 20,  "LLM",                "Gemini 2.5 Flash / Claude",               "violet"),
+  // Row 2: Orchestrator
+  n("r-orch",       "archService",  340, 170, "Orchestrator Agent",  "Research Director · max 12 steps · temp 0.3","violet"),
+  // Row 3: Sub-agents (left to right flow)
+  n("r-kb",         "archModule",   20,  380, "KB Review Agent",     "Search existing papers · max 10 steps",   "blue"),
+  n("r-web",        "archModule",   280, 380, "Web Scout Agent",     "Find new arXiv papers · max 10 steps",    "emerald"),
+  n("r-plan",       "archModule",   540, 380, "Research Planner",    "Design experiments · max 8 steps",        "rose"),
+  n("r-synth",      "archModule",   800, 380, "Synthesis Agent",     "Final report · max 6 steps",              "amber"),
+  // Row 4: Tools
+  n("r-list",       "archModule",   20,  580, "list_papers",         "GET /papers → paper list",                "blue"),
+  n("r-hybrid",     "archModule",   170, 580, "hybrid_search",       "Graph + Vector + RRF",                    "blue"),
+  n("r-arxiv",      "archModule",   370, 580, "search_arxiv",        "ArXiv API search",                        "emerald"),
+  n("r-websearch",  "archModule",   530, 580, "search_web",          "Perplexity web search",                   "emerald"),
+  n("r-show",       "archModule",   800, 580, "show_image",          "Display figure in chat",                  "amber"),
+  // Row 5: Storage backends
+  n("r-sqlite",     "archStorage",  20,  750, "SQLite",              "Paper list + entity matching",            "slate"),
+  n("r-qdrant",     "archStorage",  200, 750, "Qdrant",              "Vector similarity search",                "sky"),
+  n("r-graph",      "archStorage",  380, 750, "Knowledge Graph",     "Entity → paper traversal",                "orange"),
+  n("r-external",   "archExternal", 530, 750, "ArXiv / Web",         "External sources",                        "gray"),
+];
+
+const researchEdges: Edge[] = [
+  // User → Orchestrator ↔ LLM
+  e("r-1",  "r-user",      "r-orch",      "research query",  "source-bottom", "target-top"),
+  e("r-2",  "r-orch",      "r-llm",       "reason + decide", "source-right",  "target-bottom"),
+  // Orchestrator → Sub-agents (delegation)
+  e("r-3",  "r-orch",      "r-kb",        "① delegate",      "source-bottom", "target-top"),
+  e("r-4",  "r-orch",      "r-web",       "② delegate",      "source-bottom", "target-top"),
+  e("r-5",  "r-orch",      "r-plan",      "③ delegate",      "source-bottom", "target-top"),
+  e("r-6",  "r-orch",      "r-synth",     "④ delegate",      "source-bottom", "target-top"),
+  // KB Review → its tools
+  e("r-7",  "r-kb",        "r-list",      "tool call",       "source-bottom", "target-top"),
+  e("r-8",  "r-kb",        "r-hybrid",    "tool call",       "source-bottom", "target-top"),
+  // Web Scout → its tools
+  e("r-9",  "r-web",       "r-arxiv",     "tool call",       "source-bottom", "target-top"),
+  e("r-10", "r-web",       "r-websearch", "tool call",       "source-bottom", "target-top"),
+  // Research Planner → its tools
+  e("r-11", "r-plan",      "r-hybrid",    "verify details",  "source-bottom", "target-top",  { dashed: true }),
+  e("r-12", "r-plan",      "r-arxiv",     "lookup baselines","source-bottom", "target-top",  { dashed: true }),
+  // Synthesis → its tools
+  e("r-13", "r-synth",     "r-hybrid",    "verify details",  "source-bottom", "target-top",  { dashed: true }),
+  e("r-14", "r-synth",     "r-show",      "tool call",       "source-bottom", "target-top"),
+  // Tools → Storage
+  e("r-15", "r-list",      "r-sqlite",    "GET /papers",     "source-bottom", "target-top"),
+  e("r-16", "r-hybrid",    "r-sqlite",    "entity match",    "source-bottom", "target-top"),
+  e("r-17", "r-hybrid",    "r-qdrant",    "vector search",   "source-bottom", "target-top"),
+  e("r-18", "r-hybrid",    "r-graph",     "traverse",        "source-bottom", "target-top",  { dashed: true }),
+  e("r-19", "r-arxiv",     "r-external",  "arXiv API",       "source-bottom", "target-top"),
+  e("r-20", "r-websearch", "r-external",  "Perplexity",      "source-bottom", "target-top"),
+];
+
+// ═══════════════════════════════════════════════════════════════
 // VIEWS EXPORT
 // ═══════════════════════════════════════════════════════════════
 
@@ -246,18 +274,11 @@ export const views: ArchView[] = [
     edges: ingestionEdges,
   },
   {
-    id: "query",
-    label: "Query & Chat",
+    id: "chat",
+    label: "Chat",
     description: "How a user chat message flows through the AI agent, tools, and retrieval backends.",
-    nodes: queryNodes,
-    edges: queryEdges,
-  },
-  {
-    id: "data-model",
-    label: "Data Model",
-    description: "SQLite tables, Qdrant collection, and NetworkX graph structure with relationships.",
-    nodes: dataModelNodes,
-    edges: dataModelEdges,
+    nodes: chatNodes,
+    edges: chatEdges,
   },
   {
     id: "evaluation",
@@ -265,6 +286,13 @@ export const views: ArchView[] = [
     description: "Dataset generation, evaluation runs, and LLM-as-judge scoring pipeline.",
     nodes: evalNodes,
     edges: evalEdges,
+  },
+  {
+    id: "research",
+    label: "Research",
+    description: "Multi-agent system: orchestrator delegates to specialized agents for literature review, web search, planning, and synthesis.",
+    nodes: researchNodes,
+    edges: researchEdges,
   },
 ];
 
@@ -294,20 +322,6 @@ const overviewDetails: Record<string, ComponentDetail> = {
       { name: "Evaluation Page", description: "Create eval datasets, run evaluations, view metrics." },
     ],
   },
-  agent: {
-    title: "AI Agent (ToolLoopAgent)",
-    description:
-      "Orchestrates LLM calls with tool use. Receives user messages, decides which tools to call, executes them in a loop (max 6 steps), and streams the final response.",
-    technologies: ["Vercel AI SDK — ToolLoopAgent", "Gemini 2.5 Flash / Claude Haiku 4.5 / Claude Sonnet 4.5"],
-    keyFiles: ["webapp/src/lib/agents/research-owl.ts", "webapp/src/lib/ai/providers.ts"],
-    dataFlow: [
-      "User sends chat message",
-      "LLM decides which tool(s) to call",
-      "Tools execute via API proxy → RAG service",
-      "Results returned to LLM for reasoning",
-      "Loop continues (max 6 steps) or streams final answer",
-    ],
-  },
   "rag-service": {
     title: "RAG Service (FastAPI)",
     description:
@@ -321,35 +335,6 @@ const overviewDetails: Record<string, ComponentDetail> = {
       { method: "POST", path: "/graph/search", purpose: "Hybrid graph+vector search" },
       { method: "POST", path: "/eval/runs", purpose: "Start evaluation run" },
       { method: "GET", path: "/health", purpose: "Health check" },
-    ],
-  },
-  ingestion: {
-    title: "Ingestion Pipeline",
-    description:
-      "Background pipeline: downloads PDF from arxiv, extracts text via Docling, chunks (1500/200), embeds with OpenAI, stores in Qdrant. Also extracts entities with LLM, parses citations, and builds the knowledge graph.",
-    technologies: ["Docling", "OpenAI text-embedding-3-small", "GPT-4o vision", "GPT-4o-mini (entities)"],
-    keyFiles: ["rag-service/src/research_owl/ingestion/pipeline.py", "rag-service/src/research_owl/main.py — _async_ingest()"],
-    dataFlow: [
-      "Receive arxiv URL → download PDF",
-      "Docling extract → full markdown text",
-      "Chunk (1500 chars, 200 overlap) → embed → Qdrant",
-      "GPT-4o-mini extracts entities → SQLite + graph",
-      "Regex parses citations → SQLite",
-      "Rebuild NetworkX graph",
-    ],
-  },
-  retrieval: {
-    title: "Hybrid Retriever",
-    description:
-      "Combines knowledge graph traversal with vector search using Reciprocal Rank Fusion (RRF, k=60). Finds entities matching query terms, traverses the graph, runs scoped vector search, then merges with global search.",
-    technologies: ["NetworkX", "Qdrant", "RRF merging (k=60)"],
-    keyFiles: ["rag-service/src/research_owl/hybrid_retriever.py"],
-    dataFlow: [
-      "Substring-match entities in SQLite",
-      "Graph traversal → connected paper IDs",
-      "Scoped vector search (top 5 papers, 3 chunks each)",
-      "Global vector search (fallback)",
-      "RRF merge → ranked results with graph context",
     ],
   },
   qdrant: {
@@ -387,19 +372,6 @@ const overviewDetails: Record<string, ComponentDetail> = {
       { name: "Entity nodes", description: "{type}:{normalized_name} — Method, Dataset, Metric, Task, Model." },
       { name: "Citation edges", description: "CITES relationship between papers." },
       { name: "Relation edges", description: "USES, EVALUATES_ON, PROPOSES, MEASURES, TRAINS, BENCHMARKS, ADDRESSES." },
-    ],
-  },
-  external: {
-    title: "External APIs",
-    description:
-      "OpenAI for embeddings (text-embedding-3-small), vision (GPT-4o), and entity extraction (GPT-4o-mini). Arxiv for PDF downloads. AI Gateway routes LLM chat requests to Gemini/Claude.",
-    technologies: ["OpenAI API", "Arxiv", "Vercel AI Gateway"],
-    keyFiles: ["rag-service/src/research_owl/config.py", "webapp/src/lib/ai/providers.ts"],
-    subComponents: [
-      { name: "OpenAI Embeddings", description: "text-embedding-3-small, 1536 dimensions." },
-      { name: "GPT-4o Vision", description: "Generates text descriptions of paper figures." },
-      { name: "GPT-4o-mini", description: "Entity extraction and evaluation judging." },
-      { name: "AI Gateway", description: "Routes chat to Gemini 2.5 Flash, Claude Haiku 4.5, or Claude Sonnet 4.5." },
     ],
   },
 };
@@ -547,10 +519,10 @@ const queryDetails: Record<string, ComponentDetail> = {
     keyFiles: ["webapp/src/app/page.tsx — handleSubmit()"],
   },
   "q-agent": {
-    title: "ToolLoopAgent",
+    title: "Chat Agent (ToolLoopAgent)",
     description: "The core orchestrator. Creates a ToolLoopAgent with system instructions, 3 tools (list_papers, hybrid_search, show_image), temperature=0.5, and stops after 6 steps. The agent reasons about which tool(s) to call, executes them, appends results, and loops until it produces a text response.",
     technologies: ["Vercel AI SDK — ToolLoopAgent", "stepCountIs(6)", "temperature 0.5"],
-    keyFiles: ["webapp/src/lib/agents/research-owl.ts — createResearchOwlAgent()"],
+    keyFiles: ["webapp/src/lib/agents/chat-agent.ts — createChatAgent()"],
     dataFlow: [
       "Receive messages + system instructions",
       "LLM decides: tool call or text response",
@@ -578,18 +550,17 @@ const queryDetails: Record<string, ComponentDetail> = {
   },
   "q-hybrid": {
     title: "hybrid_search Tool",
-    description: "The primary search tool. Combines knowledge graph traversal with vector search using Reciprocal Rank Fusion (RRF). Discovers related papers through entity matching, runs scoped + global vector search, and merges results. Replaces the old search_chunks tool (raw vector search is still available in the RAG service for evaluation).",
+    description: "The primary search tool. Combines knowledge graph traversal with vector search using Reciprocal Rank Fusion (RRF). First, entity matching finds papers related to query terms via the knowledge graph. Then two parallel vector searches run: a scoped search (filtered to graph-discovered papers only, retrieving top 3 chunks per paper for the top 5 papers) and a global search (unfiltered across all papers, retrieving top_k chunks). Finally, RRF merges both ranked lists into a single result. RRF assigns each chunk a score of 1/(k + rank) where k=60 is a smoothing constant that prevents top-ranked results from dominating. Chunks appearing in both scoped and global results get their scores summed, naturally boosting results that are both topically relevant (via graph) and semantically similar (via embeddings).",
     technologies: ["HybridRetriever", "NetworkX", "Qdrant", "RRF (k=60)"],
     keyFiles: ["webapp/src/lib/tools/hybrid-search.ts", "rag-service/src/research_owl/hybrid_retriever.py"],
     dataFlow: [
       "Split query into words (length > 2)",
       "Substring match entities in SQLite (normalized_name LIKE %word%)",
-      "Get paper_ids connected to matched entities",
-      "Graph traversal: find papers linked to entity names",
-      "Scoped vector search: top 5 papers × 3 chunks each",
-      "Global vector search: top_k chunks (fallback)",
-      "RRF merge: score = 1/(60 + rank + 1) per source",
-      "Return: chunks + graph_context + rrf_score",
+      "Graph traversal: find papers linked to matched entities",
+      "Scoped vector search: filtered to graph-discovered papers only (top 5 papers × 3 chunks each)",
+      "Global vector search: unfiltered across all papers (top_k chunks)",
+      "RRF merge: score = 1/(60 + rank) per source, summed for chunks in both lists",
+      "Return: ranked chunks + graph_context + rrf_score",
     ],
   },
   "q-show": {
@@ -615,143 +586,6 @@ const queryDetails: Record<string, ComponentDetail> = {
     description: "The hybrid_search tool traverses the NetworkX graph to find papers connected to matched entities. For each entity name, finds the entity node, then follows edges to discover paper nodes. Returns papers with connection context (e.g. 'USES BERT').",
     technologies: ["NetworkX DiGraph", "Predecessor traversal"],
     keyFiles: ["rag-service/src/research_owl/graph_service.py — get_papers_for_entities()"],
-  },
-};
-
-// ── Data model details ──────────────────────────────────────────
-
-const dataModelDetails: Record<string, ComponentDetail> = {
-  "d-papers": {
-    title: "papers Table",
-    description: "Core table storing metadata for each ingested paper. Primary key is the arxiv ID (e.g. '2004.01354'). Tracks ingestion status, chunk/image counts, and timestamps.",
-    technologies: ["SQLite"],
-    keyFiles: ["rag-service/src/research_owl/db.py — create_paper(), update_paper(), list_papers()"],
-    subComponents: [
-      { name: "paper_id TEXT PK", description: "ArXiv ID (e.g. '2004.01354')" },
-      { name: "arxiv_url TEXT NOT NULL", description: "Original arxiv URL" },
-      { name: "title TEXT", description: "Paper title (extracted by Docling)" },
-      { name: "status TEXT DEFAULT 'pending'", description: "pending → processing → completed/failed" },
-      { name: "num_chunks INTEGER", description: "Number of text chunks stored in Qdrant" },
-      { name: "num_images INTEGER", description: "Number of figure images found" },
-      { name: "error_message TEXT", description: "Error details if status=failed" },
-      { name: "created_at, updated_at TEXT", description: "Timestamps (datetime('now'))" },
-    ],
-  },
-  "d-images": {
-    title: "images Table",
-    description: "Stores metadata for figures extracted from papers. Each image links to a paper via paper_id foreign key.",
-    technologies: ["SQLite"],
-    keyFiles: ["rag-service/src/research_owl/db.py — save_images(), get_images()"],
-    subComponents: [
-      { name: "id INTEGER PK AUTOINCREMENT", description: "Auto-generated ID" },
-      { name: "paper_id TEXT NOT NULL FK", description: "References papers(paper_id)" },
-      { name: "filename TEXT NOT NULL", description: "Image filename on disk" },
-      { name: "page_number INTEGER", description: "PDF page number (nullable)" },
-      { name: "caption TEXT", description: "Figure caption (nullable)" },
-    ],
-  },
-  "d-citations": {
-    title: "citations Table",
-    description: "Stores citation links between papers. Uses a composite primary key of (citing_id, cited_id). No explicit foreign keys — both columns contain paper IDs that may or may not exist in the papers table.",
-    technologies: ["SQLite"],
-    keyFiles: ["rag-service/src/research_owl/db.py — save_citations(), get_citations(), get_all_citations()"],
-    subComponents: [
-      { name: "citing_id TEXT NOT NULL", description: "Paper that contains the citation" },
-      { name: "cited_id TEXT NOT NULL", description: "Paper being cited" },
-      { name: "PRIMARY KEY (citing_id, cited_id)", description: "Composite key prevents duplicates" },
-    ],
-  },
-  "d-paper-ent": {
-    title: "paper_entities Table",
-    description: "Junction table linking papers to entities with typed relations. Each row represents one relationship like 'paper X USES entity Y'. Composite primary key of (paper_id, entity_id, relation).",
-    technologies: ["SQLite"],
-    keyFiles: ["rag-service/src/research_owl/db.py — add_paper_entity(), get_paper_entities()"],
-    subComponents: [
-      { name: "paper_id TEXT NOT NULL", description: "References papers(paper_id)" },
-      { name: "entity_id INTEGER NOT NULL", description: "References entities(id)" },
-      { name: "relation TEXT NOT NULL", description: "USES, PROPOSES, EVALUATES_ON, MEASURES, TRAINS, BENCHMARKS, ADDRESSES" },
-      { name: "context TEXT", description: "Optional context text for the relationship" },
-    ],
-  },
-  "d-entities": {
-    title: "entities Table",
-    description: "Stores unique entities extracted from papers by GPT-4o-mini. Each entity has a type, name, and normalized name (lowercase, stripped). Unique constraint on (type, normalized_name) prevents duplicates.",
-    technologies: ["SQLite"],
-    keyFiles: ["rag-service/src/research_owl/db.py — upsert_entity(), search_entities()"],
-    subComponents: [
-      { name: "id INTEGER PK AUTOINCREMENT", description: "Auto-generated ID" },
-      { name: "type TEXT NOT NULL", description: "Method, Dataset, Metric, Model, or Task" },
-      { name: "name TEXT NOT NULL", description: "Display name (original casing)" },
-      { name: "normalized_name TEXT NOT NULL", description: "Lowercased, stripped (for matching)" },
-      { name: "description TEXT", description: "Brief description from LLM extraction" },
-      { name: "UNIQUE(type, normalized_name)", description: "Prevents duplicate entities" },
-    ],
-  },
-  "d-eval-ds": {
-    title: "eval_datasets Table",
-    description: "Evaluation datasets containing Q&A pairs for RAG testing. Each dataset is linked to specific papers and contains multiple eval items. Supports LLM-generated or manual Q&A pairs.",
-    technologies: ["SQLite"],
-    keyFiles: ["rag-service/src/research_owl/db.py — create_eval_dataset(), list_eval_datasets()"],
-    subComponents: [
-      { name: "dataset_id TEXT PK", description: "UUID identifier" },
-      { name: "name TEXT NOT NULL", description: "Dataset name" },
-      { name: "description TEXT", description: "Dataset description" },
-      { name: "paper_ids TEXT DEFAULT '[]'", description: "JSON array of source paper IDs" },
-      { name: "num_items INTEGER DEFAULT 0", description: "Count of Q&A pairs" },
-    ],
-  },
-  "d-eval-items": {
-    title: "eval_items Table",
-    description: "Individual Q&A pairs within an evaluation dataset. Generated by GPT-4o-mini from paper text or created manually. Each item has a question and expected ground truth answer.",
-    technologies: ["SQLite"],
-    keyFiles: ["rag-service/src/research_owl/db.py — add_eval_items(), update_eval_item()"],
-    subComponents: [
-      { name: "item_id INTEGER PK AUTOINCREMENT", description: "Auto-generated ID" },
-      { name: "dataset_id TEXT NOT NULL FK", description: "References eval_datasets (ON DELETE CASCADE)" },
-      { name: "question TEXT NOT NULL", description: "Evaluation question" },
-      { name: "ground_truth TEXT NOT NULL", description: "Expected correct answer" },
-      { name: "metadata TEXT DEFAULT '{}'", description: "JSON metadata (paper_id, etc.)" },
-    ],
-  },
-  "d-eval-runs": {
-    title: "eval_runs Table",
-    description: "Records of evaluation runs against a dataset. Each run queries the RAG system with every Q&A item, judges the answers, and stores aggregate scores (correctness pass rate, factual score 0–1).",
-    technologies: ["SQLite"],
-    keyFiles: ["rag-service/src/research_owl/db.py — create_eval_run(), update_eval_run()"],
-    subComponents: [
-      { name: "run_id TEXT PK", description: "UUID identifier" },
-      { name: "dataset_id TEXT NOT NULL FK", description: "References eval_datasets" },
-      { name: "status TEXT DEFAULT 'pending'", description: "pending → running → completed/failed" },
-      { name: "query_mode TEXT DEFAULT 'mix'", description: "Search mode: semantic, graph, or mix" },
-      { name: "correctness REAL", description: "Aggregate pass rate (0–1)" },
-      { name: "factual_correctness REAL", description: "Aggregate factual score (0–1)" },
-      { name: "item_results TEXT DEFAULT '[]'", description: "JSON array of per-item results" },
-    ],
-  },
-  "d-qdrant": {
-    title: "Qdrant Collection: research_owl",
-    description: "Vector database collection storing all paper chunk embeddings. Each point has a UUID, a 1536-dimensional vector, and a payload with paper metadata. Indexed on paper_id and chunk_type for filtered searches.",
-    technologies: ["Qdrant", "COSINE distance", "KEYWORD payload index"],
-    keyFiles: ["rag-service/src/research_owl/qdrant_service.py"],
-    subComponents: [
-      { name: "Vector: 1536 dims, COSINE", description: "OpenAI text-embedding-3-small embeddings" },
-      { name: "paper_id (KEYWORD index)", description: "Enables paper-scoped filtered search" },
-      { name: "chunk_type (KEYWORD index)", description: "'text' or 'image'" },
-      { name: "content", description: "Full chunk text or image description" },
-      { name: "paper_title, chunk_index", description: "Additional metadata for display" },
-    ],
-  },
-  "d-networkx": {
-    title: "NetworkX DiGraph",
-    description: "In-memory directed graph rebuilt from SQLite on startup. Paper nodes (paper:{id}) connect to entity nodes ({type}:{name}) via typed relation edges. Also contains citation edges (CITES) between papers.",
-    technologies: ["NetworkX DiGraph", "Rebuilt on startup + after ingestion"],
-    keyFiles: ["rag-service/src/research_owl/graph_service.py"],
-    subComponents: [
-      { name: "Paper nodes", description: "paper:{paper_id} — kind='Paper', title attribute" },
-      { name: "Entity nodes", description: "{type}:{normalized_name} — kind='Method'/'Dataset'/etc." },
-      { name: "Citation edges", description: "paper → paper with relation='CITES'" },
-      { name: "Relation edges", description: "paper → entity with relation='USES'/'PROPOSES'/etc. + context" },
-    ],
   },
 };
 
@@ -817,12 +651,182 @@ const evalDetails: Record<string, ComponentDetail> = {
   },
 };
 
+// ── Research details ─────────────────────────────────────────────
+
+const researchDetails: Record<string, ComponentDetail> = {
+  "r-user": {
+    title: "User Research Query",
+    description: "User types a research topic in the Research page. The frontend uses useChat() from @ai-sdk/react. Messages are sent as POST to /api/research with the selected model ID. The API has a 300-second timeout to support deep multi-agent research flows.",
+    technologies: ["@ai-sdk/react — useChat()", "DefaultChatTransport"],
+    keyFiles: ["webapp/src/app/research/page.tsx"],
+  },
+  "r-orch": {
+    title: "Orchestrator Agent (Research Director)",
+    description: "The central coordinator that delegates work to four specialized sub-agents in sequence. Starts with review_kb to search existing KB, then scout_web for new papers, plan_research to design experiments with combined findings, and finally synthesize to produce the final report. Each sub-agent streams results back; the orchestrator passes accumulated context forward.",
+    technologies: ["Vercel AI SDK — ToolLoopAgent", "stepCountIs(12)", "temperature 0.3"],
+    keyFiles: ["webapp/src/lib/agents/orchestrator-agent.ts"],
+    dataFlow: [
+      "Receive user research query",
+      "① Delegate to KB Review Agent — search existing papers",
+      "② Delegate to Web Scout Agent — find new arXiv papers + web resources",
+      "③ Delegate to Research Planner — design experiments with combined findings",
+      "④ Delegate to Synthesis Agent — produce final polished report",
+      "Stream complete report back to user",
+    ],
+    subComponents: [
+      { name: "review_kb", description: "Delegates to KB Review Agent to search ingested papers." },
+      { name: "scout_web", description: "Delegates to Web Scout Agent for arXiv + web search." },
+      { name: "plan_research", description: "Delegates to Research Planner with accumulated findings." },
+      { name: "synthesize", description: "Delegates to Synthesis Agent for final report." },
+    ],
+  },
+  "r-llm": {
+    title: "LLM / AI Gateway",
+    description: "The language model that powers all agent reasoning. Each agent makes independent LLM calls through the Vercel AI Gateway. The orchestrator and all sub-agents share the same model, selected by the user.",
+    technologies: ["@ai-sdk/gateway", "OpenAI-compatible API"],
+    keyFiles: ["webapp/src/lib/ai/providers.ts"],
+    subComponents: [
+      { name: "google/gemini-2.5-flash", description: "Default model. Fast, good tool use." },
+      { name: "anthropic/claude-haiku-4.5", description: "Fast Anthropic model." },
+      { name: "anthropic/claude-sonnet-4.5", description: "Reasoning model with extended thinking." },
+    ],
+  },
+  "r-kb": {
+    title: "KB Review Agent",
+    description: "Searches and analyzes papers already ingested into the Research Owl knowledge base. Calls list_papers to discover available papers, performs multiple hybrid_search queries with different formulations, and returns a structured literature summary with key methods, datasets, results, gaps, and connections between papers.",
+    technologies: ["ToolLoopAgent", "stepCountIs(10)", "temperature 0.3"],
+    keyFiles: ["webapp/src/lib/agents/kb-review-agent.ts"],
+    dataFlow: [
+      "Call list_papers to see available papers",
+      "Perform multiple hybrid_search queries with different formulations",
+      "Analyze and cross-reference results",
+      "Return structured summary: papers found, methods, datasets, gaps",
+    ],
+    subComponents: [
+      { name: "list_papers", description: "Enumerate all papers in the knowledge base." },
+      { name: "hybrid_search", description: "Graph + vector search across ingested papers." },
+      { name: "show_image", description: "Display key figures and diagrams." },
+    ],
+  },
+  "r-web": {
+    title: "Web Scout Agent",
+    description: "Finds new academic papers on arXiv NOT already in the knowledge base, plus supplementary web resources. Uses multiple search strategies: main topic queries, specific sub-queries for different aspects, method/dataset/author name searches. Also searches the web for blog posts, tutorials, GitHub repos, and benchmarks.",
+    technologies: ["ToolLoopAgent", "stepCountIs(10)", "temperature 0.3"],
+    keyFiles: ["webapp/src/lib/agents/web-scout-agent.ts"],
+    dataFlow: [
+      "Search arXiv with multiple query formulations",
+      "Search by method names, dataset names, author names",
+      "Sort by relevance AND submitted_date for recent papers",
+      "Web search for blog posts, tutorials, GitHub repos",
+      "Return: papers found, key themes, recent trends",
+    ],
+    subComponents: [
+      { name: "search_arxiv", description: "Search arXiv with configurable sort (relevance, date)." },
+      { name: "search_web", description: "Perplexity-powered web search for supplementary resources." },
+    ],
+  },
+  "r-plan": {
+    title: "Research Planner Agent",
+    description: "Designs structured research plans and experiments based on combined literature findings from the KB Review and Web Scout agents. Identifies research gaps, formulates research questions and hypotheses, designs experiments with specific datasets/baselines/metrics, and plans ablation studies.",
+    technologies: ["ToolLoopAgent", "stepCountIs(8)", "temperature 0.4"],
+    keyFiles: ["webapp/src/lib/agents/research-planner-agent.ts"],
+    dataFlow: [
+      "Receive combined findings from KB Review + Web Scout",
+      "Identify research gaps and opportunities",
+      "Formulate 2–4 specific research questions + hypotheses",
+      "Design experiments: datasets, baselines, metrics, ablations",
+      "Assess risks with mitigation strategies",
+    ],
+    subComponents: [
+      { name: "hybrid_search", description: "Verify specific details in KB." },
+      { name: "search_arxiv", description: "Look up specific baselines or referenced papers." },
+    ],
+  },
+  "r-synth": {
+    title: "Synthesis Agent",
+    description: "Combines ALL findings from the previous three agents into a polished, comprehensive research document. Produces a complete report with executive summary, literature review (internal + external), comparison tables, research gaps, full research plan, and references with arxiv IDs.",
+    technologies: ["ToolLoopAgent", "stepCountIs(6)", "temperature 0.4"],
+    keyFiles: ["webapp/src/lib/agents/synthesis-agent.ts"],
+    dataFlow: [
+      "Receive accumulated context from all previous agents",
+      "Verify specific details via hybrid_search if needed",
+      "Include key figures via show_image",
+      "Produce: executive summary, lit review, gaps, research plan, impact",
+    ],
+    subComponents: [
+      { name: "hybrid_search", description: "Verify specific details or retrieve figures." },
+      { name: "show_image", description: "Display figures from KB in the final report." },
+    ],
+  },
+  "r-list": {
+    title: "list_papers Tool",
+    description: "Fetches all papers from the RAG service. Returns paper_id, title, arxiv_url, and num_chunks. Used by the KB Review Agent to discover what papers are available for analysis.",
+    technologies: ["ragFetch('/papers')", "GET /papers"],
+    keyFiles: ["webapp/src/lib/tools/list-papers.ts"],
+  },
+  "r-hybrid": {
+    title: "hybrid_search Tool",
+    description: "Primary search tool combining knowledge graph traversal with vector search using Reciprocal Rank Fusion (RRF). Used by KB Review, Research Planner, and Synthesis agents. Entity matching discovers papers via the graph, then scoped + global vector searches are merged via RRF (k=60).",
+    technologies: ["HybridRetriever", "NetworkX", "Qdrant", "RRF (k=60)"],
+    keyFiles: ["webapp/src/lib/tools/hybrid-search.ts", "rag-service/src/research_owl/hybrid_retriever.py"],
+    dataFlow: [
+      "Entity matching in SQLite (normalized_name LIKE %word%)",
+      "Graph traversal: find papers linked to matched entities",
+      "Scoped vector search: filtered to graph-discovered papers",
+      "Global vector search: unfiltered across all papers",
+      "RRF merge: score = 1/(60 + rank), summed for overlap",
+    ],
+  },
+  "r-arxiv": {
+    title: "search_arxiv Tool",
+    description: "Searches the arXiv API for academic papers. Supports configurable query, max_results (1–20), and sort_by (relevance, submitted_date, last_updated). Returns arxiv_id, title, authors, abstract, pdf_url, published date, and categories.",
+    technologies: ["ArXiv API", "POST /search/arxiv"],
+    keyFiles: ["webapp/src/lib/tools/search-arxiv.ts"],
+  },
+  "r-websearch": {
+    title: "search_web Tool",
+    description: "Internet search powered by Perplexity via Gemini 2.5 Flash. Accepts 1–5 parallel search queries. Finds blog posts, documentation, news, benchmarks, and GitHub repos relevant to the research topic. Returns structured results with citations and source URLs.",
+    technologies: ["Gemini 2.5 Flash", "Perplexity Search", "Parallel queries"],
+    keyFiles: ["webapp/src/lib/tools/search-web.ts"],
+  },
+  "r-show": {
+    title: "show_image Tool",
+    description: "Displays a figure or table image in the chat. Used by the Synthesis Agent to include key visuals in the final report. Returns url and caption for the UI to render — no backend call needed.",
+    technologies: ["Tool output only", "No backend call"],
+    keyFiles: ["webapp/src/lib/tools/show-image.ts"],
+  },
+  "r-sqlite": {
+    title: "SQLite (Entity Matching)",
+    description: "Used by list_papers for paper metadata, and by hybrid_search for entity matching. Entity search performs substring matching on normalized_name.",
+    technologies: ["SQLite", "Substring LIKE matching"],
+    keyFiles: ["rag-service/src/research_owl/db.py"],
+  },
+  "r-qdrant": {
+    title: "Qdrant Vector Search",
+    description: "Vector search backend used by hybrid_search. Embeds the query and performs cosine similarity search in the research_owl collection. Supports filtering by paper_id for scoped searches.",
+    technologies: ["Qdrant", "Cosine similarity", "1536-dim vectors"],
+    keyFiles: ["rag-service/src/research_owl/qdrant_service.py"],
+  },
+  "r-graph": {
+    title: "Knowledge Graph Traversal",
+    description: "The hybrid_search tool traverses the NetworkX graph to find papers connected to matched entities. For each entity name, finds the entity node, then follows edges to discover paper nodes with connection context.",
+    technologies: ["NetworkX DiGraph", "Predecessor traversal"],
+    keyFiles: ["rag-service/src/research_owl/graph_service.py"],
+  },
+  "r-external": {
+    title: "External Sources",
+    description: "ArXiv API for academic paper discovery and Perplexity-powered web search for supplementary resources like blog posts, tutorials, GitHub repositories, and benchmarks.",
+    technologies: ["ArXiv API", "Perplexity Search", "Gemini 2.5 Flash"],
+    keyFiles: ["webapp/src/lib/tools/search-arxiv.ts", "webapp/src/lib/tools/search-web.ts"],
+  },
+};
+
 // ── Merge all details ───────────────────────────────────────────
 
 export const componentDetails: Record<string, ComponentDetail> = {
   ...overviewDetails,
   ...ingestionDetails,
   ...queryDetails,
-  ...dataModelDetails,
   ...evalDetails,
+  ...researchDetails,
 };

@@ -22,6 +22,18 @@ import {
   ListChecks,
   Award,
   Server,
+  BrainCircuit,
+  BookOpen,
+  Globe,
+  FlaskConical,
+  GraduationCap,
+  Microscope,
+  Users,
+  Lightbulb,
+  Rocket,
+  Puzzle,
+  RefreshCw,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -56,6 +68,18 @@ const iconMap: Record<string, LucideIcon> = {
   ListChecks,
   Award,
   Server,
+  BrainCircuit,
+  BookOpen,
+  Globe,
+  FlaskConical,
+  GraduationCap,
+  Microscope,
+  Users,
+  Lightbulb,
+  Rocket,
+  Puzzle,
+  RefreshCw,
+  Zap,
 };
 
 const hiddenHandle = "!w-0 !h-0 !min-w-0 !min-h-0 !border-0 !bg-transparent";
@@ -92,7 +116,7 @@ export const PresentationNode = memo(function PresentationNode({ data }: NodePro
     <div
       className={`
         rounded-2xl border-2 ${c.border} ${c.bg}
-        min-w-[220px] max-w-[260px] px-5 py-4
+        min-w-[220px] max-w-[300px] px-5 py-4
         shadow-md
       `}
     >
