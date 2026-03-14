@@ -96,15 +96,20 @@ class ExtractionResult:
     relations: list[Relation] = field(default_factory=list)
 
 
-def _extract_key_sections(full_text: str, max_chars: int = 6000) -> str:
-    """Extract abstract + intro + methods + conclusion sections."""
+def _extract_key_sections(full_text: str, max_chars: int = 10000) -> str:
+    """Extract abstract + intro + methods + experiments + conclusion sections."""
     sections: list[str] = []
     text = full_text
 
     # Try to find and extract key sections by markdown headers
+    # (start_pattern, end_pattern) — each pair captures one section
     section_patterns = [
         (r"(?:^|\n)#+\s*Abstract\s*\n", r"(?:^|\n)#+\s*(?:1\.?\s*)?Introduction"),
         (r"(?:^|\n)#+\s*(?:1\.?\s*)?Introduction\s*\n", r"(?:^|\n)#+\s*(?:2|3)\.?"),
+        (r"(?:^|\n)#+\s*(?:\d\.?\s*)?(?:Method(?:s|ology)?|Approach|Proposed\s+Method)\s*\n",
+         r"(?:^|\n)#+\s*(?:\d\.?\s*)"),
+        (r"(?:^|\n)#+\s*(?:\d\.?\s*)?(?:Experiment(?:s|al)?(?:\s+(?:Results|Setup|Settings))?|Results(?:\s+and\s+(?:Discussion|Analysis))?|Evaluation)\s*\n",
+         r"(?:^|\n)#+\s*(?:\d\.?\s*)"),
         (r"(?:^|\n)#+\s*(?:Conclusion|Summary)\s*\n", r"(?:^|\n)#+\s*(?:References|Acknowledge)"),
     ]
 
