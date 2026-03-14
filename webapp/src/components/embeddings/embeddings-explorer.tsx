@@ -47,7 +47,7 @@ export function EmbeddingsExplorer() {
       const res = await apiFetch("/api/rag/embeddings/scatter?limit=1000");
       return res.json();
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 15 * 60 * 1000,
   });
 
   const points = data?.points ?? [];

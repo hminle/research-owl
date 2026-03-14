@@ -6,6 +6,7 @@ interface ApiNode {
   label: string;
   paper_id?: string;
   description?: string;
+  ingested?: boolean;
 }
 
 interface ApiEdge {
@@ -53,7 +54,7 @@ export function layoutGraph(
       id: n.id,
       type: "paper",
       position: { x: col * spacingX, y: row * spacingY },
-      data: { label: n.label, paper_id: n.paper_id },
+      data: { label: n.label, paper_id: n.paper_id, ingested: n.ingested ?? false },
     });
   });
 

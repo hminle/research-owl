@@ -33,15 +33,24 @@ const defaultEntityColor = { bg: "bg-gray-50", border: "border-gray-300", text: 
 
 export const PaperNode = memo(function PaperNode({ data }: NodeProps) {
   const label = (data.label as string) || "Untitled";
+  const ingested = data.ingested as boolean;
   const truncated = label.length > 40 ? label.slice(0, 37) + "..." : label;
+
+  const borderClass = ingested
+    ? "border-blue-300 bg-blue-50"
+    : "border-gray-300 bg-gray-50 border-dashed";
+  const iconBg = ingested ? "bg-blue-100" : "bg-gray-100";
+  const iconColor = ingested ? "text-blue-700" : "text-gray-500";
+  const textColor = ingested ? "text-blue-700" : "text-gray-600";
+
   return (
-    <div className="rounded-xl border-2 border-blue-300 bg-blue-50 px-4 py-3 min-w-[160px] max-w-[240px] shadow-sm hover:shadow-md hover:scale-[1.02] cursor-pointer transition-all">
+    <div className={`rounded-xl border-2 ${borderClass} px-4 py-3 min-w-[160px] max-w-[240px] shadow-sm hover:shadow-md hover:scale-[1.02] cursor-pointer transition-all`}>
       <AllHandles />
       <div className="flex items-center gap-2">
-        <div className="rounded-lg p-1.5 bg-blue-100 shrink-0">
-          <FileText className="h-4 w-4 text-blue-700" />
+        <div className={`rounded-lg p-1.5 ${iconBg} shrink-0`}>
+          <FileText className={`h-4 w-4 ${iconColor}`} />
         </div>
-        <div className="text-sm font-semibold text-blue-700 leading-tight">{truncated}</div>
+        <div className={`text-sm font-semibold ${textColor} leading-tight`}>{truncated}</div>
       </div>
     </div>
   );

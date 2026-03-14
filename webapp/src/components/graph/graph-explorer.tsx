@@ -18,7 +18,7 @@ import {
 import "@xyflow/react/dist/style.css";
 
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, GitFork, Share2 } from "lucide-react";
+import { Loader2, GitFork, Share2, Filter } from "lucide-react";
 import { apiFetch } from "@/lib/api";
 import { graphNodeTypes } from "./graph-nodes";
 import { layoutGraph } from "./graph-layout";
@@ -38,6 +38,7 @@ const defaultEdgeOptions = {
 export function GraphExplorer() {
   const [activeView, setActiveView] = useState<ViewId>("citation");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [showOnlyIngested, setShowOnlyIngested] = useState(false);
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const rfInstance = useRef<ReactFlowInstance | null>(null);
@@ -57,15 +58,34 @@ export function GraphExplorer() {
 
   useEffect(() => {
     if (!data) return;
+
+    let filteredNodes = data.nodes ?? [];
+    let filteredEdges = data.edges ?? [];
+
+    if (showOnlyIngested) {
+      const ingestedIds = new Set(
+        filteredNodes
+          .filter((n: { ingested?: boolean }) => n.ingested !== false)
+          .map((n: { id: string }) => n.id),
+      );
+      filteredNodes = filteredNodes.filter(
+        (n: { ingested?: boolean }) => n.ingested !== false,
+      );
+      filteredEdges = filteredEdges.filter(
+        (e: { source: string; target: string }) =>
+          ingestedIds.has(e.source) && ingestedIds.has(e.target),
+      );
+    }
+
     const { nodes: laidOutNodes, edges: laidOutEdges } = layoutGraph(
-      data.nodes ?? [],
-      data.edges ?? [],
+      filteredNodes,
+      filteredEdges,
     );
     setNodes(laidOutNodes);
     setEdges(laidOutEdges);
     setSelectedId(null);
     setTimeout(() => rfInstance.current?.fitView({ padding: 0.15, duration: 300 }), 50);
-  }, [data, setNodes, setEdges]);
+  }, [data, showOnlyIngested, setNodes, setEdges]);
 
   const onNodeClick: NodeMouseHandler = useCallback((_event, node: Node) => {
     setSelectedId((prev) => (prev === node.id ? null : node.id));
@@ -126,6 +146,21 @@ export function GraphExplorer() {
             </button>
           );
         })}
+        {activeView === "citation" && (
+          <button
+            onClick={() => setShowOnlyIngested((v) => !v)}
+            className={`
+              ml-2 flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm whitespace-nowrap transition-colors border
+              ${showOnlyIngested
+                ? "bg-blue-50 border-blue-300 text-blue-700 font-medium"
+                : "bg-background border-transparent text-muted-foreground hover:text-foreground hover:bg-background/50"
+              }
+            `}
+          >
+            <Filter className="h-3.5 w-3.5" />
+            Ingested only
+          </button>
+        )}
         <span className="ml-auto text-xs text-muted-foreground hidden sm:block">
           {nodes.length} nodes, {edges.length} edges
         </span>
