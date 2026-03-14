@@ -30,7 +30,7 @@ class GraphService:
         """Rebuild the in-memory graph from SQLite data."""
         self.graph.clear()
 
-        # Add paper nodes
+        # Add paper nodes (ingested)
         papers = list_papers()
         for p in papers:
             if p.status.value == "completed":
@@ -39,18 +39,31 @@ class GraphService:
                     kind="Paper",
                     paper_id=p.paper_id,
                     title=p.title or p.paper_id,
+                    ingested=True,
                 )
 
         # Add citation edges
         citations = get_all_citations()
-        for citing_id, cited_id in citations:
+        for citing_id, cited_id, cited_title in citations:
             src = f"paper:{citing_id}"
             dst = f"paper:{cited_id}"
             # Ensure both nodes exist (cited paper may not be ingested)
             if not self.graph.has_node(dst):
-                self.graph.add_node(dst, kind="Paper", paper_id=cited_id, title=cited_id)
+                self.graph.add_node(
+                    dst,
+                    kind="Paper",
+                    paper_id=cited_id,
+                    title=cited_title or cited_id,
+                    ingested=False,
+                )
             if not self.graph.has_node(src):
-                self.graph.add_node(src, kind="Paper", paper_id=citing_id, title=citing_id)
+                self.graph.add_node(
+                    src,
+                    kind="Paper",
+                    paper_id=citing_id,
+                    title=citing_id,
+                    ingested=True,
+                )
             self.graph.add_edge(src, dst, relation="CITES")
 
         # Add entity nodes and paper-entity edges
@@ -98,6 +111,7 @@ class GraphService:
                     "kind": "Paper",
                     "label": data.get("title", data.get("paper_id", node_id)),
                     "paper_id": data.get("paper_id", ""),
+                    "ingested": data.get("ingested", False),
                 })
 
         edges = []
@@ -108,15 +122,19 @@ class GraphService:
         return {"nodes": nodes, "edges": edges}
 
     def get_entity_graph(self) -> dict:
-        """Return full entity graph (all nodes + non-CITES edges)."""
+        """Return entity graph (ingested papers + entities + non-CITES edges)."""
         nodes = []
         for node_id, data in self.graph.nodes(data=True):
             if data.get("kind") == "Paper":
+                # Only include ingested papers in entity graph
+                if not data.get("ingested", False):
+                    continue
                 nodes.append({
                     "id": node_id,
                     "kind": "Paper",
                     "label": data.get("title", data.get("paper_id", node_id)),
                     "paper_id": data.get("paper_id", ""),
+                    "ingested": True,
                 })
             else:
                 nodes.append({
@@ -126,10 +144,11 @@ class GraphService:
                     "description": data.get("description", ""),
                 })
 
+        node_ids = {n["id"] for n in nodes}
         edges = []
         for u, v, data in self.graph.edges(data=True):
             rel = data.get("relation", "")
-            if rel != "CITES":
+            if rel != "CITES" and u in node_ids and v in node_ids:
                 edges.append({
                     "source": u,
                     "target": v,
@@ -226,4 +245,3 @@ class GraphService:
                             )
 
         return list(results.values())
-

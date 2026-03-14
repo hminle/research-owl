@@ -55,7 +55,7 @@ from research_owl.db import (
     upsert_entity,
 )
 from research_owl.arxiv_search import search_arxiv
-from research_owl.ingestion.citation_parser import parse_citations
+from research_owl.ingestion.citation_parser import parse_citations, parse_citations_llm
 from research_owl.ingestion.entity_extractor import extract_entities, normalize_name
 from research_owl.ingestion.pipeline import process_pdf
 from research_owl.graph_service import GraphService
@@ -270,16 +270,18 @@ async def _async_ingest(paper_id: str, arxiv_url: str, skip_embedding: bool = Fa
 
         update_step(paper_id, "extract_entities", StepStatus.completed)
 
-        # Step 5: Parse citations
+        # Step 5: Parse citations (LLM-based for titles)
         current_step = "parse_citations"
         update_step(paper_id, "parse_citations", StepStatus.in_progress)
 
-        citations = parse_citations(
+        citations = await parse_citations_llm(
             pipeline_result.full_text,
             exclude_id=paper_id,
+            openai_client=rag_service.openai,
+            model=settings.llm_model,
         )
         if citations:
-            save_citations(paper_id, [c["arxiv_id"] for c in citations])
+            save_citations(paper_id, citations=citations)
 
         update_step(paper_id, "parse_citations", StepStatus.completed)
 

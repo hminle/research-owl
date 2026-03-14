@@ -83,8 +83,9 @@ CREATE TABLE IF NOT EXISTS eval_runs (
 
 _CREATE_CITATIONS_TABLE = """
 CREATE TABLE IF NOT EXISTS citations (
-    citing_id TEXT NOT NULL,
-    cited_id  TEXT NOT NULL,
+    citing_id   TEXT NOT NULL,
+    cited_id    TEXT NOT NULL,
+    cited_title TEXT,
     PRIMARY KEY (citing_id, cited_id)
 );
 """
@@ -137,6 +138,11 @@ def init_db(db_path: Path) -> None:
     # Migrate: add context_relevance column if missing (from older schema)
     try:
         _conn.execute("ALTER TABLE eval_runs ADD COLUMN context_relevance REAL")
+    except Exception:
+        pass  # column already exists
+    # Migrate: add cited_title column to citations if missing
+    try:
+        _conn.execute("ALTER TABLE citations ADD COLUMN cited_title TEXT")
     except Exception:
         pass  # column already exists
     _conn.commit()
@@ -481,21 +487,50 @@ def get_eval_stats(dataset_id: str | None = None) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def save_citations(citing_id: str, cited_ids: list[str]) -> int:
-    """Store citation edges. Returns number of new citations added."""
+def save_citations(
+    citing_id: str,
+    cited_ids: list[str] | None = None,
+    citations: list[dict] | None = None,
+) -> int:
+    """Store citation edges. Returns number of new citations added.
+
+    Accepts either:
+      - cited_ids: list of arxiv IDs (legacy, no titles)
+      - citations: list of dicts with 'cited_id' and 'title' keys
+    """
     conn = _get_conn()
     count = 0
-    for cited_id in cited_ids:
-        try:
-            conn.execute(
-                "INSERT OR IGNORE INTO citations (citing_id, cited_id) VALUES (?, ?)",
-                (citing_id, cited_id),
-            )
-            count += 1
-        except Exception:
-            pass
+
+    if citations:
+        for c in citations:
+            try:
+                conn.execute(
+                    "INSERT OR IGNORE INTO citations (citing_id, cited_id, cited_title) VALUES (?, ?, ?)",
+                    (citing_id, c["cited_id"], c.get("title")),
+                )
+                count += 1
+            except Exception:
+                pass
+    elif cited_ids:
+        for cited_id in cited_ids:
+            try:
+                conn.execute(
+                    "INSERT OR IGNORE INTO citations (citing_id, cited_id) VALUES (?, ?)",
+                    (citing_id, cited_id),
+                )
+                count += 1
+            except Exception:
+                pass
+
     conn.commit()
     return count
+
+
+def clear_citations() -> None:
+    """Delete all citation edges."""
+    conn = _get_conn()
+    conn.execute("DELETE FROM citations")
+    conn.commit()
 
 
 def get_citations(paper_id: str, direction: str = "outgoing") -> list[str]:
@@ -509,11 +544,11 @@ def get_citations(paper_id: str, direction: str = "outgoing") -> list[str]:
         return [r["citing_id"] for r in rows]
 
 
-def get_all_citations() -> list[tuple[str, str]]:
-    """Get all citation edges as (citing_id, cited_id) tuples."""
+def get_all_citations() -> list[tuple[str, str, str | None]]:
+    """Get all citation edges as (citing_id, cited_id, cited_title) tuples."""
     conn = _get_conn()
-    rows = conn.execute("SELECT citing_id, cited_id FROM citations").fetchall()
-    return [(r["citing_id"], r["cited_id"]) for r in rows]
+    rows = conn.execute("SELECT citing_id, cited_id, cited_title FROM citations").fetchall()
+    return [(r["citing_id"], r["cited_id"], r["cited_title"]) for r in rows]
 
 
 # ---------------------------------------------------------------------------
