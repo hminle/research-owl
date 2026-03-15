@@ -602,7 +602,6 @@ async def _async_generate_dataset(dataset_id: str, paper_ids: list[str], num_que
     from research_owl.evaluation.dataset_generator import generate_qa_pairs, get_paper_text
 
     try:
-        questions_per_paper = max(1, num_questions // len(paper_ids))
         total_generated = 0
 
         for i, paper_id in enumerate(paper_ids):
@@ -614,7 +613,7 @@ async def _async_generate_dataset(dataset_id: str, paper_ids: list[str], num_que
             pairs = await generate_qa_pairs(
                 paper_id=paper_id,
                 paper_text=paper_text,
-                num_questions=questions_per_paper,
+                num_questions=num_questions,
             )
 
             if pairs:

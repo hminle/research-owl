@@ -27,7 +27,7 @@ export function DatasetList({ onSelect, selectedId }: DatasetListProps) {
   const { data: datasets = [], isLoading } = useQuery<EvalDataset[]>({
     queryKey: ["eval-datasets"],
     queryFn: async () => {
-      const res = await apiFetch("/api/rag/eval/datasets");
+      const res = await apiFetch("/api/rag/eval/datasets", { timeoutMs: 30_000 });
       return res.json();
     },
     refetchInterval: 10000,

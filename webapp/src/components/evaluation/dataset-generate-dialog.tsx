@@ -82,7 +82,7 @@ export function DatasetGenerateDialog() {
           Generate Dataset
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Generate Q&A Dataset</DialogTitle>
           <DialogDescription>
@@ -124,7 +124,7 @@ export function DatasetGenerateDialog() {
             <label className="text-sm font-medium">
               Select papers ({selectedPapers.length} selected)
             </label>
-            <div className="max-h-48 overflow-y-auto rounded-md border p-2 space-y-1">
+            <div className="max-h-48 overflow-y-auto overflow-x-hidden rounded-md border p-2 space-y-1">
               {completedPapers.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-2 text-center">
                   No completed papers available. Ingest papers first.
@@ -133,19 +133,16 @@ export function DatasetGenerateDialog() {
                 completedPapers.map((paper) => (
                   <label
                     key={paper.paper_id}
-                    className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent cursor-pointer"
+                    className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent cursor-pointer overflow-hidden"
                   >
                     <input
                       type="checkbox"
                       checked={selectedPapers.includes(paper.paper_id)}
                       onChange={() => togglePaper(paper.paper_id)}
-                      className="rounded"
+                      className="rounded shrink-0"
                     />
-                    <span className="truncate">
+                    <span className="truncate min-w-0 flex-1">
                       {paper.title || paper.paper_id}
-                    </span>
-                    <span className="text-xs text-muted-foreground ml-auto shrink-0">
-                      {paper.paper_id}
                     </span>
                   </label>
                 ))

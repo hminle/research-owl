@@ -6,10 +6,10 @@ export function apiProgressUrl(paperId: string): string {
 
 export async function apiFetch(
   path: string,
-  init?: RequestInit,
+  init?: RequestInit & { timeoutMs?: number },
 ): Promise<Response> {
   const timeoutMs =
-    Number(process.env.NEXT_PUBLIC_API_TIMEOUT_MS) || DEFAULT_API_TIMEOUT_MS;
+    init?.timeoutMs ?? (Number(process.env.NEXT_PUBLIC_API_TIMEOUT_MS) || DEFAULT_API_TIMEOUT_MS);
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
