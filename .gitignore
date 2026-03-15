@@ -210,3 +210,4 @@ __marimo__/
 # Research Owl runtime data
 rag-service/data/
 reference_code/
+node_modules/

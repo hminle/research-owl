@@ -1,3 +1,17 @@
+<p align="center">
+  <img src="webapp/public/cute-owl-that-read-book.svg" alt="Research Owl" width="100" />
+</p>
+
+<p align="center">
+  <img src="https://img.shields.io/badge/Next.js-16-black?logo=next.js" alt="Next.js" />
+  <img src="https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=white" alt="React" />
+  <img src="https://img.shields.io/badge/TypeScript-5-3178C6?logo=typescript&logoColor=white" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/Qdrant-DC244C?logo=qdrant&logoColor=white" alt="Qdrant" />
+</p>
+
 # Research Owl
 
 An AI research assistant that reads academic papers, answers your questions, and conducts deep research with multiple specialized AI agents.
@@ -62,7 +76,7 @@ How a user chat message flows through the AI agent, tools, and retrieval backend
 ```mermaid
 graph TD
     User["User"] -->|message| Agent["Chat Agent<br/>ToolLoopAgent · max 6 steps"]
-    Agent -->|reason + decide| LLM["LLM<br/>Gemini 2.5 Flash / Claude"]
+    Agent -->|reason + decide| LLM["LLM<br/>Gemini / OpenAI GPT / Claude"]
 
     Agent -->|tool call| ListPapers["list_papers"]
     Agent -->|tool call| HybridSearch["hybrid_search<br/>Graph + Vector + RRF"]
@@ -81,7 +95,7 @@ Multi-agent system: an orchestrator delegates to specialized agents for literatu
 ```mermaid
 graph TD
     User["User"] -->|research query| Orch["Orchestrator Agent<br/>Research Director · max 12 steps"]
-    Orch -->|reason + decide| LLM["LLM<br/>Gemini 2.5 Flash / Claude"]
+    Orch -->|reason + decide| LLM["LLM<br/>Gemini / OpenAI GPT / Claude"]
 
     Orch -->|"① delegate"| KB["KB Review Agent<br/>Search existing papers"]
     Orch -->|"② delegate"| Web["Web Scout Agent<br/>Find new arXiv papers"]
@@ -124,7 +138,7 @@ graph LR
 | Layer | Technologies |
 |-------|-------------|
 | **Frontend** | Next.js, React, Tailwind CSS, shadcn/ui |
-| **AI Models** | Gemini 2.5, Claude Haiku & Sonnet |
+| **AI Models** | Gemini, OpenAI GPT, Claude |
 | **Search & Storage** | Qdrant vector DB, SQLite, NetworkX Knowledge Graph |
 | **Backend** | FastAPI, Python, OpenAI embeddings |
 
