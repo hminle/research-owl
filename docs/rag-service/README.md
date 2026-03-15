@@ -4,7 +4,7 @@ Backend engine of Research Owl — ingests, indexes, and queries academic papers
 
 ## Tech Stack
 
-- **Runtime**: Python 3.11, FastAPI, Uvicorn
+- **Runtime**: Python 3.10+, FastAPI, Uvicorn
 - **Vector DB**: Qdrant (cosine similarity, 1536-dim)
 - **Graph**: NetworkX (in-memory directed graph)
 - **Metadata DB**: SQLite3
@@ -16,7 +16,7 @@ Backend engine of Research Owl — ingests, indexes, and queries academic papers
 ```bash
 pip install -e .
 cp .env.example .env
-docker compose up -d qdrant
+docker run -d -p 6333:6333 -p 6334:6334 -v qdrant_data:/qdrant/storage qdrant/qdrant:latest
 python -m research_owl.main
 # → http://localhost:8000
 ```
@@ -100,6 +100,9 @@ graph TB
 | `db.py` | SQLite schema and CRUD |
 | `config.py` | Pydantic settings with `OWL_` env prefix |
 | `progress.py` | In-memory step tracking with async SSE streaming |
+| `arxiv_search.py` | ArXiv paper search |
+| `models.py` | Pydantic models for API request/response types |
+| `umap_reducer.py` | Dimensionality reduction for embedding visualization |
 
 ## Design Decisions
 
@@ -129,33 +132,14 @@ All settings use the `OWL_` prefix via Pydantic `BaseSettings`.
 
 ```
 data/
-├── owl.db              # SQLite database
+├── papers.db           # SQLite database
 ├── pdfs/               # Downloaded PDFs
 ├── parsed/             # Docling-extracted markdown
 └── images/             # Extracted figures and tables
 ```
 
-### Docker Deployment
+### Running Qdrant
 
 ```bash
-# Just Qdrant
-docker compose up -d qdrant
-
-# Full stack
-docker compose up --build
-```
-
-```yaml
-services:
-  qdrant:
-    image: qdrant/qdrant
-    ports: ["6333:6333", "6334:6334"]
-    volumes: [qdrant_data:/qdrant/storage]
-
-  app:
-    build: .
-    ports: ["8000:8000"]
-    env_file: .env
-    depends_on: [qdrant]
-    volumes: [./data:/app/data]
+docker run -d -p 6333:6333 -p 6334:6334 -v qdrant_data:/qdrant/storage qdrant/qdrant:latest
 ```
