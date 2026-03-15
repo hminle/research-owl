@@ -364,7 +364,7 @@ const slide11: PresentationSlide = {
     {
       icon: "Brain",
       title: "AI Models",
-      description: "Gemini 2.5, Claude Haiku & Sonnet",
+      description: "Gemini, OpenAI GPT, Claude",
       color: "violet",
     },
     {

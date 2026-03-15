@@ -140,7 +140,7 @@ const ingestionEdges: Edge[] = [
 const chatNodes: Node[] = [
   // Row 1: User + LLM
   n("q-user",   "archUser",     340, 20,  "User",             "Chat page input",                     "gray"),
-  n("q-llm",    "archExternal", 640, 20,  "LLM",             "Gemini 2.5 Flash / Claude",            "violet"),
+  n("q-llm",    "archExternal", 640, 20,  "LLM",             "Gemini / OpenAI GPT / Claude",         "violet"),
   // Row 2: AI Agent (ToolLoopAgent)
   n("q-agent",  "archService",  310, 170, "Chat Agent",       "ToolLoopAgent · max 6 steps · temp 0.5","violet"),
   // Row 3: Tools (below agent)
@@ -203,7 +203,7 @@ const evalEdges: Edge[] = [
 const researchNodes: Node[] = [
   // Row 1: User + LLM
   n("r-user",       "archUser",     340, 20,  "User",                "Research page input",                     "gray"),
-  n("r-llm",        "archExternal", 700, 20,  "LLM",                "Gemini 2.5 Flash / Claude",               "violet"),
+  n("r-llm",        "archExternal", 700, 20,  "LLM",                "Gemini / OpenAI GPT / Claude",            "violet"),
   // Row 2: Orchestrator
   n("r-orch",       "archService",  340, 170, "Orchestrator Agent",  "Research Director · max 12 steps · temp 0.3","violet"),
   // Row 3: Sub-agents (left to right flow)
@@ -785,8 +785,8 @@ const researchDetails: Record<string, ComponentDetail> = {
   },
   "r-websearch": {
     title: "search_web Tool",
-    description: "Internet search powered by Perplexity via Gemini 2.5 Flash. Accepts 1–5 parallel search queries. Finds blog posts, documentation, news, benchmarks, and GitHub repos relevant to the research topic. Returns structured results with citations and source URLs.",
-    technologies: ["Gemini 2.5 Flash", "Perplexity Search", "Parallel queries"],
+    description: "Internet search powered by Perplexity via LLM. Accepts 1–5 parallel search queries. Finds blog posts, documentation, news, benchmarks, and GitHub repos relevant to the research topic. Returns structured results with citations and source URLs.",
+    technologies: ["Gemini", "OpenAI GPT", "Perplexity Search", "Parallel queries"],
     keyFiles: ["webapp/src/lib/tools/search-web.ts"],
   },
   "r-show": {
@@ -816,7 +816,7 @@ const researchDetails: Record<string, ComponentDetail> = {
   "r-external": {
     title: "External Sources",
     description: "ArXiv API for academic paper discovery and Perplexity-powered web search for supplementary resources like blog posts, tutorials, GitHub repositories, and benchmarks.",
-    technologies: ["ArXiv API", "Perplexity Search", "Gemini 2.5 Flash"],
+    technologies: ["ArXiv API", "Perplexity Search", "Gemini", "OpenAI GPT", "Claude"],
     keyFiles: ["webapp/src/lib/tools/search-arxiv.ts", "webapp/src/lib/tools/search-web.ts"],
   },
 };
