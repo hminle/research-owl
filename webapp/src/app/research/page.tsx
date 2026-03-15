@@ -40,19 +40,19 @@ import { Microscope, Sparkles } from "lucide-react";
 
 const SUGGESTIONS = [
   {
-    label: "Diffusion models for image generation",
+    label: "Diffusion models for white balance",
     prompt:
-      "Research the current landscape of diffusion models for image generation. What are the key methods, datasets, and recent advances?",
+      "Research diffusion models applied to white balance correction.",
   },
   {
-    label: "Vision-language models",
+    label: "Vision-language models for white balance",
     prompt:
-      "I want to research vision-language models (VLMs). What papers exist in the knowledge base, and what are the latest developments on arXiv?",
+      "I want to research vision-language models (VLMs). How to apply it to white balance or ISP processing?",
   },
   {
-    label: "Neural radiance fields",
+    label: "Neural radiance fields for white balance",
     prompt:
-      "Plan a research project on neural radiance fields (NeRF). Review existing literature and propose experiments.",
+      "Plan a research project on neural radiance fields (NeRF) for white balance or ISP processing. Review existing literature and propose experiments.",
   },
 ];
 

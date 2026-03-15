@@ -50,8 +50,8 @@ const SUGGESTIONS = [
     prompt: "What are the key modules in the Modular Neural ISP framework, and how does it generalize to unseen cameras?",
   },
   {
-    label: "CCMNet for color constancy",
-    prompt: "How does CCMNet leverage pre-calibrated CCMs for cross-camera color constancy? What is the imaginary camera augmentation technique?",
+    label: "Show architecture figure",
+    prompt: "Show me the architecture figure from the Deep White-Balance Editing paper.",
   },
   {
     label: "Compare the approaches",
