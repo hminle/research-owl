@@ -69,6 +69,17 @@ graph LR
     SQLiteStore -->|rebuild| GraphStore["Knowledge Graph<br/>NetworkX"]
 ```
 
+#### Chunking Strategy
+
+After Docling extracts markdown text from a PDF, the text is split into fixed-size overlapping chunks before embedding:
+
+| Parameter | Value | Description |
+|-----------|-------|-------------|
+| **Chunk size** | 1 500 characters | Each chunk contains up to 1 500 characters of text |
+| **Overlap** | 200 characters | Adjacent chunks share 200 characters to preserve context across boundaries |
+| **Embedding model** | `text-embedding-3-small` | OpenAI embedding model (1 536 dimensions) |
+| **Image chunks** | Separate | Figures are extracted as PNGs and embedded via a vision model description, stored alongside text chunks |
+
 ### Chat Flow
 
 How a user chat message flows through the AI agent, tools, and retrieval backends.
@@ -141,6 +152,97 @@ graph LR
 | **AI Models** | Gemini, OpenAI GPT, Claude |
 | **Search & Storage** | Qdrant vector DB, SQLite, NetworkX Knowledge Graph |
 | **Backend** | FastAPI, Python, OpenAI embeddings |
+
+## Getting Started
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) and Docker Compose
+- An API key for at least one LLM provider (OpenAI, Google, or Anthropic)
+
+### 1. Clone and configure
+
+```bash
+git clone https://github.com/hminle/research-owl.git
+cd research-owl
+cp .env.example .env
+```
+
+Edit `.env` and set your API key:
+
+```bash
+# Required: used by the RAG service for embeddings, entity extraction, and LLM calls
+OWL_AI_GATEWAY_API_KEY=your-api-key
+```
+
+<details>
+<summary>Optional environment variables</summary>
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OWL_AI_GATEWAY_BASE_URL` | `https://ai-gateway.vercel.sh/v1` | OpenAI-compatible API base URL |
+| `OWL_LLM_MODEL` | `openai/gpt-4o-mini` | Model for reasoning and generation |
+| `OWL_VISION_MODEL` | `openai/gpt-4o` | Model for image/figure description |
+| `OWL_EMBED_MODEL` | `openai/text-embedding-3-small` | Embedding model |
+| `OWL_EMBED_DIMENSION` | `1536` | Embedding vector dimension |
+| `AI_GATEWAY_API_KEY` | Falls back to `OWL_AI_GATEWAY_API_KEY` | Separate key for the webapp chat |
+
+</details>
+
+### 2. Run with Docker Compose
+
+```bash
+docker compose up
+```
+
+This starts three services:
+
+| Service | URL | Description |
+|---------|-----|-------------|
+| **Webapp** | http://localhost:3000 | Next.js frontend |
+| **RAG Service** | http://localhost:8000 | FastAPI backend |
+| **Qdrant** | http://localhost:6333 | Vector database |
+
+### 3. Local development (without Docker)
+
+If you prefer to run services locally:
+
+**Start Qdrant:**
+
+```bash
+docker run -d -p 6333:6333 -v qdrant_data:/qdrant/storage qdrant/qdrant:latest
+```
+
+**Start the RAG service:**
+
+```bash
+cd rag-service
+pip install -e .
+uvicorn research_owl.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+**Start the webapp:**
+
+```bash
+cd webapp
+npm install
+npm run dev
+```
+
+### 4. Use it
+
+1. Open http://localhost:3000
+2. Go to the **Ingest** page and paste an ArXiv URL (e.g. `https://arxiv.org/abs/2005.11401`)
+3. Wait for the ingestion pipeline to finish (progress is streamed in real time)
+4. Ask questions in the **Chat** page or run a **Deep Research** query
+
+## Limitations
+
+- **ArXiv-only ingestion** — Currently only supports papers from ArXiv; other sources (Semantic Scholar, PDF uploads) are not yet supported
+- **No authentication** — The app has no user accounts or access control, so it is not suitable for shared deployments without additional security
+- **In-memory knowledge graph** — The NetworkX graph is rebuilt from SQLite on every restart, which becomes slow as the number of papers grows
+- **Fixed chunking** — Uses a simple character-based split (1 500 chars / 200 overlap) rather than section-aware or semantic chunking, which can cut mid-sentence or mid-paragraph
+- **Single-language support** — Entity extraction and LLM prompts are English-only; non-English papers may produce poor results
 
 ## Roadmap
 
