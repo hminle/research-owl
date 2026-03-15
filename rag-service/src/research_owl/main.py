@@ -44,6 +44,7 @@ from research_owl.db import (
     list_eval_items,
     list_eval_runs,
     list_papers,
+    list_papers_missing_title,
     resolve_paper_id,
     save_citations,
     save_images,
@@ -54,7 +55,7 @@ from research_owl.db import (
     update_paper,
     upsert_entity,
 )
-from research_owl.arxiv_search import search_arxiv
+from research_owl.arxiv_search import fetch_arxiv_title, search_arxiv
 from research_owl.ingestion.citation_parser import parse_citations, parse_citations_llm
 from research_owl.ingestion.entity_extractor import extract_entities, normalize_name
 from research_owl.ingestion.pipeline import process_pdf
@@ -135,6 +136,15 @@ async def lifespan(app: FastAPI):
     )
     await rag_service.initialize()
 
+    # Backfill titles for papers that were ingested before title tracking
+    papers_missing = list_papers_missing_title()
+    for p in papers_missing:
+        title = await asyncio.to_thread(fetch_arxiv_title, p.paper_id)
+        if title:
+            update_paper(p.paper_id, title=title)
+            logger.info("Backfilled title for %s: %r", p.paper_id, title)
+
+    # Build graph after backfill so nodes have correct titles
     graph_service = GraphService()
     graph_service.rebuild()
 
@@ -218,10 +228,12 @@ async def _async_ingest(paper_id: str, arxiv_url: str, skip_embedding: bool = Fa
                 update_step(paper_id, step, StepStatus.completed)
             current_step = None
 
+            existing = get_paper(paper_id)
+            final_title = (existing.title if existing and existing.title else None) or pipeline_result.title
             update_paper(
                 paper_id,
                 status=PaperStatus.completed.value,
-                title=pipeline_result.title,
+                title=final_title,
                 num_chunks=num_chunks,
                 num_images=0,
             )
@@ -298,10 +310,14 @@ async def _async_ingest(paper_id: str, arxiv_url: str, skip_embedding: bool = Fa
         update_step(paper_id, "collect_images", StepStatus.completed)
         current_step = None
 
+        # Prefer the title already in DB (e.g. from arxiv search) over
+        # Docling's document.name which is often just the PDF filename.
+        existing = get_paper(paper_id)
+        final_title = (existing.title if existing and existing.title else None) or pipeline_result.title
         update_paper(
             paper_id,
             status=PaperStatus.completed.value,
-            title=pipeline_result.title,
+            title=final_title,
             num_chunks=ingest_result["num_chunks"],
             num_images=num_images,
         )
@@ -365,7 +381,7 @@ async def ingest(request: IngestRequest, background_tasks: BackgroundTasks):
             return IngestResponse(paper_id=paper_id, status=existing.status)
         update_paper(paper_id, status=PaperStatus.pending.value, error_message=None)
     else:
-        create_paper(paper_id, request.arxiv_url)
+        create_paper(paper_id, request.arxiv_url, title=request.title)
 
     background_tasks.add_task(_async_ingest, paper_id, request.arxiv_url, request.skip_embedding)
     return IngestResponse(paper_id=paper_id, status=PaperStatus.pending)

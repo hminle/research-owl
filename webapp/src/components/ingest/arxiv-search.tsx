@@ -6,6 +6,13 @@ import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { apiFetch } from "@/lib/api";
 
 interface ArxivResult {
@@ -24,7 +31,7 @@ interface ArxivSearchResponse {
 }
 
 interface ArxivSearchProps {
-  onIngest: (arxivUrl: string) => void;
+  onIngest: (arxivUrl: string, title: string) => void;
   ingestingIds: Set<string>;
   ingestedIds: Set<string>;
   disabled?: boolean;
@@ -37,13 +44,14 @@ export function ArxivSearch({
   disabled,
 }: ArxivSearchProps) {
   const [query, setQuery] = useState("");
+  const [maxResults, setMaxResults] = useState("10");
 
   const search = useMutation({
     mutationFn: async (q: string) => {
       const res = await apiFetch("/api/rag/search/arxiv", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: q, max_results: 10 }),
+        body: JSON.stringify({ query: q, max_results: Number(maxResults) }),
       });
       return res.json() as Promise<ArxivSearchResponse>;
     },
@@ -67,6 +75,17 @@ export function ArxivSearch({
           disabled={search.isPending || disabled}
           className="flex-1"
         />
+        <Select value={maxResults} onValueChange={setMaxResults} disabled={search.isPending || disabled}>
+          <SelectTrigger className="w-[80px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="10">10</SelectItem>
+            <SelectItem value="20">20</SelectItem>
+            <SelectItem value="30">30</SelectItem>
+            <SelectItem value="50">50</SelectItem>
+          </SelectContent>
+        </Select>
         <Button
           type="submit"
           disabled={!query.trim() || search.isPending || disabled}
@@ -123,7 +142,7 @@ function ArxivResultCard({
   isIngested,
 }: {
   paper: ArxivResult;
-  onIngest: (arxivUrl: string) => void;
+  onIngest: (arxivUrl: string, title: string) => void;
   isIngesting: boolean;
   isIngested: boolean;
 }) {
@@ -162,7 +181,7 @@ function ArxivResultCard({
           variant={isIngested ? "outline" : "default"}
           disabled={isIngesting || isIngested}
           onClick={() =>
-            onIngest(`https://arxiv.org/abs/${paper.arxiv_id}`)
+            onIngest(`https://arxiv.org/abs/${paper.arxiv_id}`, paper.title)
           }
           className="shrink-0"
         >

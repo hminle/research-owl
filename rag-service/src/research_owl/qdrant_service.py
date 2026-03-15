@@ -244,6 +244,28 @@ class QdrantRAGService:
         )
         return result.count
 
+    async def get_paper_title(self, paper_id: str) -> str | None:
+        """Get the paper_title from the first stored chunk for a paper."""
+        results, _ = await self.qdrant.scroll(
+            collection_name=COLLECTION_NAME,
+            scroll_filter=models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key="paper_id",
+                        match=models.MatchValue(value=paper_id),
+                    )
+                ]
+            ),
+            limit=1,
+            with_payload=True,
+            with_vectors=False,
+        )
+        if results and results[0].payload:
+            title = results[0].payload.get("paper_title", "")
+            if title and title != paper_id:
+                return title
+        return None
+
     async def delete_paper_chunks(self, paper_id: str) -> None:
         """Delete all chunks for a paper from Qdrant."""
         await self.qdrant.delete(

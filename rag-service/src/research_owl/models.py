@@ -39,6 +39,7 @@ class ArxivSearchResponse(BaseModel):
 
 class IngestRequest(BaseModel):
     arxiv_url: str
+    title: str | None = None
     skip_embedding: bool = False
 
 

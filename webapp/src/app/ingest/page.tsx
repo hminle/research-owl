@@ -70,11 +70,11 @@ function IngestPageContent() {
       currentPaper.status === "pending");
 
   const ingestMutation = useMutation({
-    mutationFn: async (arxivUrl: string) => {
+    mutationFn: async ({ arxivUrl, title }: { arxivUrl: string; title?: string }) => {
       const res = await apiFetch("/api/rag/ingest", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ arxiv_url: arxivUrl }),
+        body: JSON.stringify({ arxiv_url: arxivUrl, title }),
       });
       return res.json() as Promise<{ paper_id: string }>;
     },
@@ -86,7 +86,7 @@ function IngestPageContent() {
         return next;
       });
     },
-    onError: (_err, arxivUrl) => {
+    onError: (_err, { arxivUrl }) => {
       // Extract ID from URL to clear ingesting state
       const match = arxivUrl.match(/(\d{4}\.\d{4,5})/);
       if (match) {
@@ -100,12 +100,12 @@ function IngestPageContent() {
   });
 
   const handleSearchIngest = useCallback(
-    (arxivUrl: string) => {
+    (arxivUrl: string, title?: string) => {
       const match = arxivUrl.match(/(\d{4}\.\d{4,5})/);
       if (match) {
         setIngestingIds((prev) => new Set(prev).add(match[1]));
       }
-      ingestMutation.mutate(arxivUrl);
+      ingestMutation.mutate({ arxivUrl, title });
     },
     [ingestMutation],
   );

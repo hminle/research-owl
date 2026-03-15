@@ -154,11 +154,11 @@ def _get_conn() -> sqlite3.Connection:
     return _conn
 
 
-def create_paper(paper_id: str, arxiv_url: str) -> PaperMetadata:
+def create_paper(paper_id: str, arxiv_url: str, title: str | None = None) -> PaperMetadata:
     conn = _get_conn()
     conn.execute(
-        "INSERT INTO papers (paper_id, arxiv_url, status) VALUES (?, ?, ?)",
-        (paper_id, arxiv_url, PaperStatus.pending.value),
+        "INSERT INTO papers (paper_id, arxiv_url, title, status) VALUES (?, ?, ?, ?)",
+        (paper_id, arxiv_url, title, PaperStatus.pending.value),
     )
     conn.commit()
     return get_paper(paper_id)  # type: ignore[return-value]
@@ -190,6 +190,15 @@ def get_paper(paper_id: str) -> PaperMetadata | None:
 def list_papers() -> list[PaperMetadata]:
     conn = _get_conn()
     rows = conn.execute("SELECT * FROM papers ORDER BY created_at DESC").fetchall()
+    return [PaperMetadata(**dict(r)) for r in rows]
+
+
+def list_papers_missing_title() -> list[PaperMetadata]:
+    """Return completed papers whose title is NULL or matches their paper_id."""
+    conn = _get_conn()
+    rows = conn.execute(
+        "SELECT * FROM papers WHERE status = 'completed' AND (title IS NULL OR title = paper_id)",
+    ).fetchall()
     return [PaperMetadata(**dict(r)) for r in rows]
 
 

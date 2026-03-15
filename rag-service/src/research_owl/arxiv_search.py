@@ -73,3 +73,12 @@ def search_arxiv(
 
     logger.info("arXiv search for %r returned %d results", query, len(results))
     return results
+
+
+def fetch_arxiv_title(arxiv_id: str) -> str | None:
+    """Fetch the title of a single paper by its arxiv ID."""
+    client = arxiv.Client()
+    search = arxiv.Search(id_list=[arxiv_id])
+    for paper in client.results(search):
+        return paper.title
+    return None
