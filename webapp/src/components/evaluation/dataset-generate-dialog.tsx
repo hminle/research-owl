@@ -44,6 +44,7 @@ export function DatasetGenerateDialog() {
     mutationFn: async () => {
       const res = await apiFetch("/api/rag/eval/datasets/generate", {
         method: "POST",
+        timeoutMs: 30_000,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
