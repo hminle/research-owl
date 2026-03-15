@@ -186,7 +186,7 @@ def fig_hybrid_retrieval():
     draw_rounded_box(ax, 8, 0, 2.0, 0.6, "Knowledge\nGraph", "", EMERALD[0], EMERALD[1], fontsize=9)
 
     # LLM
-    draw_rounded_box(ax, 8, 5.5, 1.8, 0.7, "LLM", "Gemini / Claude", VIOLET[0], VIOLET[1], fontsize=9)
+    draw_rounded_box(ax, 8, 5.5, 1.8, 0.7, "LLM", "Gemini / GPT / Claude", VIOLET[0], VIOLET[1], fontsize=9)
 
     # Arrows
     draw_arrow(ax, 2.2, 5.5, 3.4, 5.5)
@@ -226,7 +226,7 @@ def fig_multi_agent():
     # Orchestrator
     draw_rounded_box(ax, 4.5, 5, 2.5, 0.8, "Orchestrator", "Research Director", VIOLET[0], VIOLET[1], fontsize=9)
     # LLM
-    draw_rounded_box(ax, 8.5, 5, 1.8, 0.7, "LLM", "Gemini / Claude", VIOLET[0], VIOLET[1], fontsize=9)
+    draw_rounded_box(ax, 8.5, 5, 1.8, 0.7, "LLM", "Gemini / GPT / Claude", VIOLET[0], VIOLET[1], fontsize=9)
 
     # Sub-agents
     draw_rounded_box(ax, 1.5, 3, 2.0, 0.8, "KB Review\nAgent", "", ORANGE[0], ORANGE[1], fontsize=9)
