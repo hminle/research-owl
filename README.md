@@ -144,6 +144,25 @@ graph LR
     Judge -->|scores| Results["Results<br/>Per-item scores · aggregates"]
 ```
 
+### Evaluation Results
+
+We evaluate Research Owl using an **LLM-as-Judge** approach (not RAGAS). Q&A pairs are auto-generated from ingested papers, then the RAG pipeline answers each question. An LLM judge scores two metrics:
+
+- **Factual Correctness** (0–1): How accurately does the RAG answer match the ground-truth answer?
+- **Context Relevance** (0–1): How relevant is the retrieved context to the question?
+
+We ran evaluation on two datasets across 4 ingested papers:
+
+| Dataset | Papers | Questions | Factual Correctness | Context Relevance |
+|---------|--------|-----------|---------------------|-------------------|
+| `eval-test-set` | 1 | 10 | 0.73 | 0.95 |
+| `eval-test-set-20` | 4 | 20 | 0.80 | 0.94 |
+
+**Key takeaways:**
+- Context relevance is consistently high (0.94–0.95), meaning the hybrid retrieval (graph + vector + RRF) finds the right passages
+- Factual correctness improves with more papers in the knowledge base (0.73 → 0.80), likely because cross-paper context helps the LLM generate more complete answers
+- The judge model (GPT-4o-mini) scores at temperature 0 for reproducibility
+
 ## Tech Stack
 
 | Layer | Technologies |
@@ -238,11 +257,11 @@ npm run dev
 
 ## Limitations
 
-- **ArXiv-only ingestion** — Currently only supports papers from ArXiv; other sources (Semantic Scholar, PDF uploads) are not yet supported
-- **No authentication** — The app has no user accounts or access control, so it is not suitable for shared deployments without additional security
-- **In-memory knowledge graph** — The NetworkX graph is rebuilt from SQLite on every restart, which becomes slow as the number of papers grows
+- **In-memory knowledge graph** — We use NetworkX as an in-memory graph rather than a dedicated graph database (e.g. Neo4j). The entire graph is rebuilt from SQLite on every restart, which becomes slow as the paper count grows
+- **No chat persistence** — Chat and research conversations are not saved; refreshing the page or starting a new session loses all previous messages and context
+- **ArXiv-only ingestion** — Only supports papers from ArXiv; other sources (Semantic Scholar, direct PDF uploads) are not yet supported
+- **No authentication** — No user accounts or access control, so the app is not suitable for shared or public deployments without additional security
 - **Fixed chunking** — Uses a simple character-based split (1 500 chars / 200 overlap) rather than section-aware or semantic chunking, which can cut mid-sentence or mid-paragraph
-- **Single-language support** — Entity extraction and LLM prompts are English-only; non-English papers may produce poor results
 
 ## Roadmap
 
